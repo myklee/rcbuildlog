@@ -4,8 +4,8 @@
     <nav>
       <router-link to="/">Home</router-link>
       <router-link v-if="loggedInUser" to="/user-home">User home</router-link>
-      {{ console.log(loggedInUser) }}
-      <router-link v-if="!loggedInUser" to="/user-home">Login</router-link>
+      <router-link v-if="!loggedInUser" to="/login">Login</router-link>
+      <router-link to="/signup">Sign Up</router-link>
     </nav>
 
     <!-- Router View for active page -->

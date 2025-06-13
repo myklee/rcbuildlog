@@ -6,9 +6,12 @@ import Login from '../views/Login.vue';
 import UserHomePage from '../views/UserHomePage.vue';
 import ProjectDetailPage from '../views/ProjectDetailPage.vue';
 // import ProjectDetailPage from '@/views/ProjectDetailPage.vue';
+import SignUp from '../views/SignUp.vue';
 
 const routes = [
+  { path: '/', component: Login },
   { path: '/login', component: Login },
+  { path: '/signup', component: SignUp },
   { path: '/user-home', component: UserHomePage },
   { path: '/project/:id', component: ProjectDetailPage },
 ];
