@@ -5,7 +5,7 @@
       <router-link to="/">Home</router-link>
       <router-link v-if="loggedInUser" to="/user-home">User home</router-link>
       {{ console.log(loggedInUser) }}
-      <router-link to="/login">Login</router-link>
+      <router-link v-if="!loggedInUser" to="/user-home">Login</router-link>
     </nav>
 
     <!-- Router View for active page -->
@@ -17,11 +17,11 @@
 // No script logic needed here yet
 //Q5hv3MHDWB9goBno Supabase password
 //EcNSjddg6yQo85dZ
-import { ref } from "vue";
+import { computed } from "vue";
 import { useDataStore } from "./store/dataStore";
 
 const dataStore = useDataStore();
-const loggedInUser = ref(dataStore.loggedInUser);
+const loggedInUser = computed(() => dataStore.loggedInUser);
 </script>
 
 <style>

@@ -2,24 +2,26 @@
   <div class="max-w-sm mx-auto mt-10 p-4 border rounded shadow">
     <h2 class="text-xl font-bold mb-4">Login</h2>
 
-    <input
-      v-model="username"
-      placeholder="Enter username"
-      class="w-full mb-3 px-3 py-2 border rounded"
-    />
-    <input
-      type="password"
-      v-model="password"
-      placeholder="Enter password"
-      class="w-full mb-3 px-3 py-2 border rounded"
-    />
+    <form @submit.prevent="login">
+      <input
+        v-model="username"
+        placeholder="Enter username"
+        class="w-full mb-3 px-3 py-2 border rounded"
+      />
+      <input
+        type="password"
+        v-model="password"
+        placeholder="Enter password"
+        class="w-full mb-3 px-3 py-2 border rounded"
+      />
 
-    <button
-      @click="login"
-      class="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700"
-    >
-      Login
-    </button>
+      <button
+        type="submit"
+        class="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700"
+      >
+        Login
+      </button>
+    </form>
 
     <p v-if="loginFailed" class="text-red-500 mt-3">
       Invalid username or password
