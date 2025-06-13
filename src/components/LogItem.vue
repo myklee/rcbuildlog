@@ -1,58 +1,51 @@
 <template>
   <div class="log-item">
-    <div class="log-header">
-      <span class="log-date">{{ formatDate(logItem.date) }}</span>
-      <div class="log-actions">
-        <button class="action-button" @click="toggleEdit" v-if="!isEditing">
-          <span class="action-icon">✏️</span>
-        </button>
-        <button class="action-button" @click="saveEdit" v-if="isEditing">
-          <span class="action-icon">💾</span>
-        </button>
-      </div>
+    <!-- Log Image -->
+    <div v-if="logItem.image_url" class="log-image">
+      <img :src="logItem.image_url" :alt="logItem.title" />
     </div>
 
+    <!-- Log Content -->
     <div class="log-content">
-      <!-- Image Section -->
-      <div class="log-image" v-if="logItem.image">
-        <img :src="logItem.image.url" :alt="logItem.image.description" />
+      <div class="log-header">
+        <h3 class="log-title">{{ logItem.title }}</h3>
+        <span class="log-date">{{ formatDate(logItem.created_at) }}</span>
       </div>
 
-      <!-- Notes Section -->
-      <div class="log-notes" :class="{ 'editing': isEditing }">
-        <textarea
-          v-if="isEditing"
-          v-model="editedNotes"
-          placeholder="Add your notes here..."
-          class="notes-input"
-        ></textarea>
-        <p v-else>{{ logItem.notes || 'No notes added' }}</p>
+      <p class="log-text">{{ logItem.content }}</p>
+
+      <!-- Links -->
+      <div v-if="logItem.links && logItem.links.length" class="log-links">
+        <a v-for="(link, index) in logItem.links" 
+           :key="index"
+           :href="link.url"
+           target="_blank"
+           class="log-link">
+          {{ link.title || link.url }}
+        </a>
       </div>
 
-      <!-- Links Section -->
-      <div class="log-links" v-if="logItem.links && logItem.links.length">
-        <h4>Related Links</h4>
-        <ul>
-          <li v-for="(link, index) in logItem.links" :key="index">
-            <a :href="link.url" target="_blank" rel="noopener noreferrer">
-              {{ link.title || link.url }}
-            </a>
-          </li>
-        </ul>
-      </div>
-
-      <!-- Tags Section -->
-      <div class="log-tags" v-if="logItem.tags && logItem.tags.length">
-        <span v-for="(tag, index) in logItem.tags" :key="index" class="tag">
+      <!-- Tags -->
+      <div v-if="logItem.tags && logItem.tags.length" class="log-tags">
+        <span v-for="(tag, index) in logItem.tags" 
+              :key="index"
+              class="log-tag">
           #{{ tag }}
         </span>
+      </div>
+
+      <!-- Actions -->
+      <div class="log-actions">
+        <button @click="editLog" class="edit-button">Edit</button>
+        <button @click="deleteLog" class="delete-button">Delete</button>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { defineProps, defineEmits } from 'vue'
+import { useDataStore } from '../store/dataStore'
 
 const props = defineProps({
   logItem: {
@@ -62,12 +55,9 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['update'])
-
-const isEditing = ref(false)
-const editedNotes = ref(props.logItem.notes || '')
+const dataStore = useDataStore()
 
 const formatDate = (date) => {
-  if (!date) return ''
   return new Date(date).toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'short',
@@ -77,36 +67,57 @@ const formatDate = (date) => {
   })
 }
 
-const toggleEdit = () => {
-  isEditing.value = true
-  editedNotes.value = props.logItem.notes || ''
+const editLog = () => {
+  emit('update', props.logItem)
 }
 
-const saveEdit = () => {
-  emit('update', {
-    ...props.logItem,
-    notes: editedNotes.value
-  })
-  isEditing.value = false
+const deleteLog = async () => {
+  if (confirm('Are you sure you want to delete this log entry?')) {
+    try {
+      await dataStore.deleteLog(props.logItem.id)
+    } catch (error) {
+      console.error('Error deleting log:', error)
+    }
+  }
 }
 </script>
 
 <style scoped>
 .log-item {
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border: 1px solid #ddd;
+  border-radius: 8px;
   margin-bottom: 20px;
   overflow: hidden;
+  background: white;
+}
+
+.log-image {
+  width: 100%;
+  max-height: 300px;
+  overflow: hidden;
+}
+
+.log-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.log-content {
+  padding: 16px;
 }
 
 .log-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  padding: 12px 16px;
-  background: #f8f9fa;
-  border-bottom: 1px solid #eee;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+.log-title {
+  font-size: 1.2em;
+  font-weight: 600;
+  margin: 0;
 }
 
 .log-date {
@@ -114,78 +125,25 @@ const saveEdit = () => {
   font-size: 0.9em;
 }
 
-.log-actions {
-  display: flex;
-  gap: 8px;
-}
-
-.action-button {
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 4px;
-  border-radius: 4px;
-  transition: background-color 0.2s;
-}
-
-.action-button:hover {
-  background-color: #eee;
-}
-
-.log-content {
-  padding: 16px;
-}
-
-.log-image {
-  margin-bottom: 16px;
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-.log-image img {
-  width: 100%;
-  height: auto;
-  object-fit: cover;
-}
-
-.log-notes {
-  margin-bottom: 16px;
-}
-
-.notes-input {
-  width: 100%;
-  min-height: 100px;
-  padding: 8px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  resize: vertical;
+.log-text {
+  margin: 0 0 16px;
+  white-space: pre-wrap;
 }
 
 .log-links {
-  margin-bottom: 16px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
 }
 
-.log-links h4 {
-  margin: 0 0 8px 0;
-  color: #333;
-}
-
-.log-links ul {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-
-.log-links li {
-  margin-bottom: 4px;
-}
-
-.log-links a {
+.log-link {
   color: #0066cc;
   text-decoration: none;
+  font-size: 0.9em;
 }
 
-.log-links a:hover {
+.log-link:hover {
   text-decoration: underline;
 }
 
@@ -193,9 +151,10 @@ const saveEdit = () => {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  margin-bottom: 16px;
 }
 
-.tag {
+.log-tag {
   background: #e9ecef;
   padding: 4px 8px;
   border-radius: 16px;
@@ -203,9 +162,37 @@ const saveEdit = () => {
   color: #495057;
 }
 
-@media (max-width: 768px) {
-  .log-item {
-    margin: 10px;
-  }
+.log-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.edit-button, .delete-button {
+  padding: 4px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9em;
+}
+
+.edit-button {
+  background: none;
+  border: 1px solid #ddd;
+  color: #666;
+}
+
+.delete-button {
+  background: none;
+  border: 1px solid #dc3545;
+  color: #dc3545;
+}
+
+.edit-button:hover {
+  background: #f8f9fa;
+}
+
+.delete-button:hover {
+  background: #dc3545;
+  color: white;
 }
 </style> 

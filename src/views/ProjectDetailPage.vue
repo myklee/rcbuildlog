@@ -110,22 +110,22 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useDataStore } from '../store/dataStore'
 import LogItem from '../components/LogItem.vue'
+import { supabase } from '../lib/supabase'
 
 const dataStore = useDataStore()
 const route = useRoute()
 const projectId = route.params.id
 
 const project = computed(() => {
-  return dataStore.getProjects.find(p => p.id === parseInt(projectId))
+  return dataStore.getProjects.find(p => p.id === projectId)
 })
 
 const projectLogs = computed(() => {
-  if (!project.value || !project.value.logs) return []
-  return project.value.logs
+  return dataStore.logs
 })
 
 // New log entry state
@@ -136,11 +136,33 @@ const newLogLinks = ref([])
 const newLogTags = ref([])
 const newTag = ref('')
 
-const handleImageUpload = (event) => {
+// Fetch logs when component mounts
+onMounted(async () => {
+  if (projectId) {
+    await dataStore.fetchLogs(projectId)
+  }
+})
+
+const handleImageUpload = async (event) => {
   const file = event.target.files[0]
   if (file) {
+    // Upload image to Supabase storage
+    const fileName = `log-${Date.now()}.${file.type.split('/')[1]}`
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from('project-images')
+      .upload(fileName, file)
+      
+    if (uploadError) {
+      console.error('Error uploading image:', uploadError)
+      return
+    }
+    
+    const { data: { publicUrl } } = supabase.storage
+      .from('project-images')
+      .getPublicUrl(fileName)
+      
     newLogImage.value = {
-      url: URL.createObjectURL(file),
+      url: publicUrl,
       description: file.name
     }
   }
@@ -165,29 +187,40 @@ const removeTag = (index) => {
   newLogTags.value.splice(index, 1)
 }
 
-const saveLogEntry = () => {
-  if (!project.value.logs) {
-    project.value.logs = []
+const saveLogEntry = async () => {
+  try {
+    await dataStore.addLog({
+      project_id: projectId,
+      title: newLogNotes.value.substring(0, 100), // Use first 100 chars as title
+      content: newLogNotes.value,
+      image_url: newLogImage.value?.url,
+      links: newLogLinks.value.filter(link => link.url.trim()),
+      tags: newLogTags.value
+    })
+
+    // Reset form
+    newLogImage.value = null
+    newLogNotes.value = ''
+    newLogLinks.value = []
+    newLogTags.value = []
+    showAddLogModal.value = false
+  } catch (error) {
+    console.error('Error saving log entry:', error)
   }
-
-  project.value.logs.unshift({
-    date: new Date().toISOString(),
-    image: newLogImage.value,
-    notes: newLogNotes.value,
-    links: newLogLinks.value.filter(link => link.url.trim()),
-    tags: newLogTags.value
-  })
-
-  // Reset form
-  newLogImage.value = null
-  newLogNotes.value = ''
-  newLogLinks.value = []
-  newLogTags.value = []
-  showAddLogModal.value = false
 }
 
-const updateLogEntry = (index, updatedLog) => {
-  project.value.logs[index] = updatedLog
+const updateLogEntry = async (index, updatedLog) => {
+  try {
+    await dataStore.updateLog(updatedLog.id, {
+      title: updatedLog.title,
+      content: updatedLog.content,
+      image_url: updatedLog.image_url,
+      links: updatedLog.links,
+      tags: updatedLog.tags
+    })
+  } catch (error) {
+    console.error('Error updating log entry:', error)
+  }
 }
 </script>
 

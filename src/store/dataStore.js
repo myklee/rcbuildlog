@@ -9,9 +9,43 @@ export const useDataStore = defineStore('dataStore', {
     projects: [],
     logs: [],
     isOffline: false,
+    searchQuery: '',
+    filters: {
+      sortBy: 'created_at',
+      sortOrder: 'desc'
+    }
   }),
 
   actions: {
+    // Initialize auth state
+    async initializeAuth() {
+      try {
+        // Get current session
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (error) throw error;
+        
+        if (session) {
+          this.loggedInUser = session.user;
+          await this.fetchProjects();
+        }
+
+        // Set up auth state change listener
+        supabase.auth.onAuthStateChange(async (event, session) => {
+          if (event === 'SIGNED_IN' && session) {
+            this.loggedInUser = session.user;
+            await this.fetchProjects();
+          } else if (event === 'SIGNED_OUT') {
+            this.loggedInUser = null;
+            this.projects = [];
+            this.logs = [];
+          }
+          this.saveState();
+        });
+      } catch (error) {
+        console.error('Error initializing auth:', error);
+      }
+    },
+
     // --- AUTH ---
     async login(email, password) {
       try {
@@ -19,33 +53,34 @@ export const useDataStore = defineStore('dataStore', {
         if (error) throw error;
         this.loggedInUser = data.user;
         this.isOffline = false;
+        await this.fetchProjects();
         this.saveState();
         return true;
       } catch (e) {
-        // Fallback to localStorage
-        const saved = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY));
-        if (saved && saved.loggedInUser && saved.loggedInUser.email === email) {
-          this.loggedInUser = saved.loggedInUser;
-          this.isOffline = true;
-          return true;
-        }
+        console.error('Login error:', e);
         return false;
       }
     },
 
     async signup(email, password) {
-      const { data, error } = await supabase.auth.signUp({ email, password });
-      if (error) throw error;
-      // Optionally, you can auto-login after signup
-      this.loggedInUser = data.user;
-      this.saveState();
-      return true;
+      try {
+        const { data, error } = await supabase.auth.signUp({ email, password });
+        if (error) throw error;
+        this.loggedInUser = data.user;
+        this.saveState();
+        return true;
+      } catch (e) {
+        console.error('Signup error:', e);
+        throw e;
+      }
     },
 
     async logout() {
       try {
         await supabase.auth.signOut();
-      } catch {}
+      } catch (error) {
+        console.error('Logout error:', error);
+      }
       this.loggedInUser = null;
       this.projects = [];
       this.logs = [];
@@ -56,23 +91,45 @@ export const useDataStore = defineStore('dataStore', {
     async fetchProjects() {
       if (!this.loggedInUser) return [];
       try {
-        const { data, error } = await supabase
+        let query = supabase
           .from('projects')
           .select('*')
           .eq('user_id', this.loggedInUser.id);
+
+        // Apply sorting
+        query = query.order(this.filters.sortBy, { 
+          ascending: this.filters.sortOrder === 'asc' 
+        });
+
+        const { data, error } = await query;
         if (error) throw error;
+        
         this.projects = data;
         this.isOffline = false;
         this.saveState();
         return data;
       } catch (e) {
-        // Fallback to localStorage
-        const saved = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY));
-        if (saved && saved.projects) {
-          this.projects = saved.projects;
-          this.isOffline = true;
-          return saved.projects;
-        }
+        console.error('Error fetching projects:', e);
+        return [];
+      }
+    },
+
+    async searchProjects(query) {
+      if (!this.loggedInUser) return [];
+      try {
+        const { data, error } = await supabase
+          .from('projects')
+          .select('*')
+          .eq('user_id', this.loggedInUser.id)
+          .or(`name.ilike.%${query}%,description.ilike.%${query}%`)
+          .order(this.filters.sortBy, { 
+            ascending: this.filters.sortOrder === 'asc' 
+          });
+
+        if (error) throw error;
+        return data;
+      } catch (e) {
+        console.error('Error searching projects:', e);
         return [];
       }
     },
@@ -80,19 +137,104 @@ export const useDataStore = defineStore('dataStore', {
     async addProject(project) {
       if (!this.loggedInUser) return;
       try {
+        // Handle image upload if present
+        let imageUrl = project.imageUrl;
+        if (project.imageUrl && project.imageUrl.startsWith('blob:')) {
+          const response = await fetch(project.imageUrl);
+          const blob = await response.blob();
+          const fileName = `project-${Date.now()}.${blob.type.split('/')[1]}`;
+          
+          const { data: uploadData, error: uploadError } = await supabase.storage
+            .from('project-images')
+            .upload(fileName, blob);
+            
+          if (uploadError) throw uploadError;
+          
+          const { data: { publicUrl } } = supabase.storage
+            .from('project-images')
+            .getPublicUrl(fileName);
+            
+          imageUrl = publicUrl;
+        }
+
         const { data, error } = await supabase
           .from('projects')
-          .insert([{ ...project, user_id: this.loggedInUser.id }])
+          .insert([{
+            name: project.name,
+            description: project.description,
+            image_url: imageUrl,
+            user_id: this.loggedInUser.id
+          }])
           .select();
+          
         if (error) throw error;
-        this.projects.push(data[0]);
+        this.projects.unshift(data[0]);
         this.isOffline = false;
         this.saveState();
+        return data[0];
       } catch (e) {
-        // Offline: add locally
-        this.projects.push({ ...project, user_id: this.loggedInUser.id, id: Date.now() });
-        this.isOffline = true;
+        console.error('Error adding project:', e);
+        throw e;
+      }
+    },
+
+    async updateProject(projectId, updates) {
+      if (!this.loggedInUser) return;
+      try {
+        const { data, error } = await supabase
+          .from('projects')
+          .update(updates)
+          .eq('id', projectId)
+          .eq('user_id', this.loggedInUser.id)
+          .select();
+          
+        if (error) throw error;
+        
+        const index = this.projects.findIndex(p => p.id === projectId);
+        if (index !== -1) {
+          this.projects[index] = data[0];
+        }
+        
         this.saveState();
+        return data[0];
+      } catch (e) {
+        console.error('Error updating project:', e);
+        throw e;
+      }
+    },
+
+    async deleteProject(projectId) {
+      if (!this.loggedInUser) return;
+      try {
+        // First, get the project to check for image
+        const { data: project } = await supabase
+          .from('projects')
+          .select('image_url')
+          .eq('id', projectId)
+          .single();
+
+        // Delete the image from storage if it exists
+        if (project?.image_url) {
+          const imagePath = project.image_url.split('/').pop();
+          await supabase.storage
+            .from('project-images')
+            .remove([imagePath]);
+        }
+
+        // Delete the project
+        const { error } = await supabase
+          .from('projects')
+          .delete()
+          .eq('id', projectId)
+          .eq('user_id', this.loggedInUser.id);
+          
+        if (error) throw error;
+        
+        this.projects = this.projects.filter(p => p.id !== projectId);
+        this.saveState();
+      } catch (e) {
+        console.error('Error deleting project:', e);
+        throw e;
       }
     },
 
@@ -103,20 +245,16 @@ export const useDataStore = defineStore('dataStore', {
         const { data, error } = await supabase
           .from('logs')
           .select('*')
-          .eq('project_id', projectId);
+          .eq('project_id', projectId)
+          .order('created_at', { ascending: false });
+          
         if (error) throw error;
         this.logs = data;
         this.isOffline = false;
         this.saveState();
         return data;
       } catch (e) {
-        // Fallback to localStorage
-        const saved = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY));
-        if (saved && saved.logs) {
-          this.logs = saved.logs.filter(log => log.project_id === projectId);
-          this.isOffline = true;
-          return this.logs;
-        }
+        console.error('Error fetching logs:', e);
         return [];
       }
     },
@@ -126,43 +264,106 @@ export const useDataStore = defineStore('dataStore', {
       try {
         const { data, error } = await supabase
           .from('logs')
-          .insert([log])
+          .insert([{
+            ...log,
+            user_id: this.loggedInUser.id
+          }])
           .select();
+          
         if (error) throw error;
-        this.logs.push(data[0]);
+        this.logs.unshift(data[0]);
         this.isOffline = false;
         this.saveState();
+        return data[0];
       } catch (e) {
-        // Offline: add locally
-        this.logs.push({ ...log, id: Date.now() });
-        this.isOffline = true;
-        this.saveState();
+        console.error('Error adding log:', e);
+        throw e;
       }
     },
 
-    // --- LOCALSTORAGE SYNC ---
+    async updateLog(logId, updates) {
+      if (!this.loggedInUser) return;
+      try {
+        const { data, error } = await supabase
+          .from('logs')
+          .update(updates)
+          .eq('id', logId)
+          .eq('user_id', this.loggedInUser.id)
+          .select();
+          
+        if (error) throw error;
+        
+        const index = this.logs.findIndex(l => l.id === logId);
+        if (index !== -1) {
+          this.logs[index] = data[0];
+        }
+        
+        this.saveState();
+        return data[0];
+      } catch (e) {
+        console.error('Error updating log:', e);
+        throw e;
+      }
+    },
+
+    async deleteLog(logId) {
+      if (!this.loggedInUser) return;
+      try {
+        const { error } = await supabase
+          .from('logs')
+          .delete()
+          .eq('id', logId)
+          .eq('user_id', this.loggedInUser.id);
+          
+        if (error) throw error;
+        
+        this.logs = this.logs.filter(l => l.id !== logId);
+        this.saveState();
+      } catch (e) {
+        console.error('Error deleting log:', e);
+        throw e;
+      }
+    },
+
+    // --- UTILITY ---
     saveState() {
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify({
-        loggedInUser: this.loggedInUser,
-        projects: this.projects,
-        logs: this.logs,
-      }));
+      try {
+        const state = {
+          loggedInUser: this.loggedInUser,
+          projects: this.projects,
+          logs: this.logs,
+          isOffline: this.isOffline
+        };
+        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(state));
+      } catch (e) {
+        console.error('Error saving state:', e);
+      }
     },
 
     loadState() {
-      const saved = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY));
-      if (saved) {
-        this.loggedInUser = saved.loggedInUser;
-        this.projects = saved.projects || [];
-        this.logs = saved.logs || [];
+      try {
+        const state = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY));
+        if (state) {
+          this.loggedInUser = state.loggedInUser;
+          this.projects = state.projects;
+          this.logs = state.logs;
+          this.isOffline = state.isOffline;
+        }
+      } catch (e) {
+        console.error('Error loading state:', e);
       }
+    },
+
+    setFilters(filters) {
+      this.filters = { ...this.filters, ...filters };
+      return this.fetchProjects();
     }
   },
 
   getters: {
-    isAuthenticated: (state) => !!state.loggedInUser,
     getUser: (state) => state.loggedInUser,
     getProjects: (state) => state.projects,
     getLogs: (state) => state.logs,
+    getOfflineStatus: (state) => state.isOffline
   }
 });
