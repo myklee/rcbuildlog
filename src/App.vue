@@ -5,7 +5,7 @@
       <router-link to="/">Home</router-link>
       <router-link v-if="loggedInUser" to="/user-home">User home</router-link>
       <router-link v-if="!loggedInUser" to="/login">Login</router-link>
-      <router-link to="/signup">Sign Up</router-link>
+      <router-link v-if="!loggedInUser" to="/signup">Sign Up</router-link>
     </nav>
 
     <!-- Router View for active page -->
@@ -14,14 +14,15 @@
 </template>
 
 <script setup>
-// No script logic needed here yet
-//Q5hv3MHDWB9goBno Supabase password
-//EcNSjddg6yQo85dZ
-import { computed } from "vue";
+import { computed, onMounted } from "vue";
 import { useDataStore } from "./store/dataStore";
 
 const dataStore = useDataStore();
 const loggedInUser = computed(() => dataStore.loggedInUser);
+
+onMounted(async () => {
+  await dataStore.initializeAuth();
+});
 </script>
 
 <style>
