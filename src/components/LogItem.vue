@@ -1,8 +1,14 @@
 <template>
   <div class="log-item">
     <!-- Log Image -->
-    <div v-if="logItem.image_url" class="log-image">
+    <div class="log-image" v-if="logItem.image_url">
       <img :src="logItem.image_url" :alt="logItem.title" />
+    </div>
+    <div class="log-video" v-if="logItem.video">
+      <video controls>
+        <source :src="logItem.video" type="video/mp4">
+        Your browser does not support the video tag.
+      </video>
     </div>
 
     <!-- Log Content -->
@@ -101,6 +107,19 @@ const deleteLog = async () => {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.log-video {
+  margin-bottom: 1rem;
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+
+.log-video video {
+  width: 100%;
+  max-height: 400px;
+  object-fit: cover;
+  border-radius: 0.5rem;
 }
 
 .log-content {
