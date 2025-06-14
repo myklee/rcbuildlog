@@ -3,7 +3,7 @@
     <div v-if="isLoading" class="loading">
       Loading your projects...
     </div>
-    <template v-else>
+    <template v-else-if="user">
       <div class="header">
         <h2>Welcome, {{ user.email }}!</h2>
         <button @click="showCreateModal = true" class="create-button">
@@ -295,21 +295,19 @@ const logout = async () => {
 // Initialize
 onMounted(async () => {
   try {
-    isLoading.value = true
-    // First ensure auth is initialized
-    await dataStore.initializeAuth()
-    
-    // Then fetch projects if user is logged in
-    if (dataStore.loggedInUser) {
-      await dataStore.fetchProjects()
-    } else {
-      // If no user is logged in, redirect to login
-      router.push('/login')
-    }
+    await dataStore.initialize()
+    await dataStore.fetchProjects()
   } catch (error) {
     console.error('Error loading user home:', error)
   } finally {
     isLoading.value = false
+  }
+})
+
+// Watch for user changes
+watch(user, (newUser) => {
+  if (!newUser) {
+    router.push('/login')
   }
 })
 
