@@ -21,10 +21,10 @@
       />
     </div>
 
-    <!-- Add Log Modal -->
+    <!-- Add/Edit Log Modal -->
     <div v-if="showAddLogModal" class="modal-overlay">
       <div class="modal-content">
-        <h3>Add New Log Entry</h3>
+        <h3>{{ editingLog ? 'Edit Log Entry' : 'Add New Log Entry' }}</h3>
         
         <!-- Image Upload -->
         <div class="form-group">
@@ -39,9 +39,28 @@
             @change="handleImageUpload"
             class="file-input"
           />
-          <div v-if="newLogImage" class="image-preview">
-            <img :src="newLogImage.url" :alt="newLogImage.description" />
+          <div v-if="newLogImage || editingLog?.image_url" class="image-preview">
+            <img :src="newLogImage?.url || editingLog?.image_url" :alt="newLogImage?.description || 'Log image'" />
           </div>
+        </div>
+
+        <!-- Video Upload -->
+        <div class="form-group">
+          <label for="video-upload" class="upload-label">
+            <span class="upload-icon">📹</span>
+            <span>Add Video</span>
+          </label>
+          <input
+            type="file"
+            id="video-upload"
+            accept="video/*"
+            @change="handleVideoUpload"
+            class="file-input"
+          />
+          <video v-if="newLogVideo || editingLog?.video_url" controls class="preview-video">
+            <source :src="newLogVideo?.url || editingLog?.video_url" type="video/mp4">
+            Your browser does not support the video tag.
+          </video>
         </div>
 
         <!-- Notes -->
@@ -98,7 +117,7 @@
 
         <!-- Modal Actions -->
         <div class="modal-actions">
-          <button @click="saveLogEntry" class="save-button">Save Entry</button>
+          <button @click="saveLogEntry" class="save-button">{{ editingLog ? 'Save Changes' : 'Save Entry' }}</button>
           <button @click="showAddLogModal = false" class="cancel-button">Cancel</button>
         </div>
       </div>
@@ -131,10 +150,12 @@ const projectLogs = computed(() => {
 // New log entry state
 const showAddLogModal = ref(false)
 const newLogImage = ref(null)
+const newLogVideo = ref(null)
 const newLogNotes = ref('')
 const newLogLinks = ref([])
 const newLogTags = ref([])
 const newTag = ref('')
+const editingLog = ref(null)
 
 // Fetch logs when component mounts
 onMounted(async () => {
@@ -145,26 +166,69 @@ onMounted(async () => {
 
 const handleImageUpload = async (event) => {
   const file = event.target.files[0]
-  if (file) {
-    // Upload image to Supabase storage
-    const fileName = `log-${Date.now()}.${file.type.split('/')[1]}`
-    const { data: uploadData, error: uploadError } = await supabase.storage
-      .from('project-images')
-      .upload(fileName, file)
-      
-    if (uploadError) {
-      console.error('Error uploading image:', uploadError)
-      return
-    }
-    
+  if (!file) return
+
+  try {
+    const fileExt = file.name.split('.').pop()
+    const fileName = `${Math.random()}.${fileExt}`
+    const filePath = `${projectId}/${fileName}`
+
+    const { error: uploadError } = await supabase.storage
+      .from('project-files')
+      .upload(filePath, file)
+
+    if (uploadError) throw uploadError
+
     const { data: { publicUrl } } = supabase.storage
-      .from('project-images')
-      .getPublicUrl(fileName)
-      
+      .from('project-files')
+      .getPublicUrl(filePath)
+
     newLogImage.value = {
       url: publicUrl,
       description: file.name
     }
+  } catch (error) {
+    console.error('Error uploading image:', error)
+  }
+}
+
+const handleVideoUpload = async (event) => {
+  const file = event.target.files[0]
+  if (!file) return
+
+  // Check if file is a video
+  if (!file.type.startsWith('video/')) {
+    alert('Please upload a video file')
+    return
+  }
+
+  // Check file size (limit to 100MB)
+  if (file.size > 100 * 1024 * 1024) {
+    alert('Video file size must be less than 100MB')
+    return
+  }
+
+  try {
+    const fileExt = file.name.split('.').pop()
+    const fileName = `${Math.random()}.${fileExt}`
+    const filePath = `${projectId}/${fileName}`
+
+    const { error: uploadError } = await supabase.storage
+      .from('project-files')
+      .upload(filePath, file)
+
+    if (uploadError) throw uploadError
+
+    const { data: { publicUrl } } = supabase.storage
+      .from('project-files')
+      .getPublicUrl(filePath)
+
+    newLogVideo.value = {
+      url: publicUrl,
+      description: file.name
+    }
+  } catch (error) {
+    console.error('Error uploading video:', error)
   }
 }
 
@@ -187,39 +251,49 @@ const removeTag = (index) => {
   newLogTags.value.splice(index, 1)
 }
 
+const updateLogEntry = async (index, updatedLog) => {
+  editingLog.value = updatedLog
+  showAddLogModal.value = true
+}
+
 const saveLogEntry = async () => {
+  if (!newLogNotes.value) {
+    alert("Please fill in all required fields")
+    return
+  }
+
   try {
-    await dataStore.addLog({
-      project_id: projectId,
-      title: newLogNotes.value.substring(0, 100), // Use first 100 chars as title
-      content: newLogNotes.value,
-      image_url: newLogImage.value?.url,
-      links: newLogLinks.value.filter(link => link.url.trim()),
-      tags: newLogTags.value
-    })
+    if (editingLog.value) {
+      await dataStore.updateLog(editingLog.value.id, {
+        title: newLogNotes.value.substring(0, 100),
+        content: newLogNotes.value,
+        image_url: newLogImage.value?.url,
+        video_url: newLogVideo.value?.url,
+        links: newLogLinks.value.filter(link => link.url.trim()),
+        tags: newLogTags.value
+      })
+    } else {
+      await dataStore.addLog({
+        project_id: projectId,
+        title: newLogNotes.value.substring(0, 100),
+        content: newLogNotes.value,
+        image_url: newLogImage.value?.url,
+        video_url: newLogVideo.value?.url,
+        links: newLogLinks.value.filter(link => link.url.trim()),
+        tags: newLogTags.value
+      })
+    }
 
     // Reset form
     newLogImage.value = null
+    newLogVideo.value = null
     newLogNotes.value = ''
     newLogLinks.value = []
     newLogTags.value = []
+    editingLog.value = null
     showAddLogModal.value = false
   } catch (error) {
     console.error('Error saving log entry:', error)
-  }
-}
-
-const updateLogEntry = async (index, updatedLog) => {
-  try {
-    await dataStore.updateLog(updatedLog.id, {
-      title: updatedLog.title,
-      content: updatedLog.content,
-      image_url: updatedLog.image_url,
-      links: updatedLog.links,
-      tags: updatedLog.tags
-    })
-  } catch (error) {
-    console.error('Error updating log entry:', error)
   }
 }
 </script>
@@ -409,6 +483,13 @@ const updateLogEntry = async (index, updatedLog) => {
   width: 100%;
   height: auto;
   border-radius: 4px;
+}
+
+.preview-video {
+  max-width: 100%;
+  max-height: 200px;
+  margin-top: 0.5rem;
+  border-radius: 0.5rem;
 }
 
 @media (max-width: 768px) {
