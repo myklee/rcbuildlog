@@ -19,10 +19,11 @@
     <!-- Log Entries Feed -->
     <div class="log-feed">
       <LogItem
-        v-for="(log, index) in projectLogs"
-        :key="index"
+        v-for="log in projectLogs"
+        :key="log.id"
         :logItem="log"
-        @update="updateLogEntry(index, $event)"
+        @edit="updateLogEntry"
+        @delete="confirmDeleteLog"
       />
     </div>
 
@@ -312,9 +313,26 @@ const removeTag = (index) => {
   newLogTags.value.splice(index, 1)
 }
 
-const updateLogEntry = async (index, updatedLog) => {
+const updateLogEntry = async (updatedLog) => {
   editingLog.value = updatedLog
+  // Populate form fields with existing log data
+  newLogNotes.value = updatedLog.content
+  newLogImage.value = updatedLog.image_url ? { url: updatedLog.image_url } : null
+  newLogVideo.value = updatedLog.video_url ? { url: updatedLog.video_url } : null
+  newLogLinks.value = updatedLog.links || []
+  newLogTags.value = updatedLog.tags || []
   showAddLogModal.value = true
+}
+
+const confirmDeleteLog = async (log) => {
+  if (confirm('Are you sure you want to delete this log entry?')) {
+    try {
+      await dataStore.deleteLog(log.id)
+      await dataStore.fetchLogs(projectId)
+    } catch (error) {
+      console.error('Error deleting log:', error)
+    }
+  }
 }
 
 const saveLogEntry = async () => {

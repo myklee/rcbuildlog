@@ -4,9 +4,11 @@
     <div class="log-image" v-if="logItem.image_url">
       <img :src="logItem.image_url" :alt="logItem.title" />
     </div>
-    <div class="log-video" v-if="logItem.video">
+
+    <!-- Log Video -->
+    <div class="log-video" v-if="logItem.video_url">
       <video controls>
-        <source :src="logItem.video" type="video/mp4">
+        <source :src="logItem.video_url" type="video/mp4">
         Your browser does not support the video tag.
       </video>
     </div>
@@ -51,7 +53,6 @@
 
 <script setup>
 import { defineProps, defineEmits } from 'vue'
-import { useDataStore } from '../store/dataStore'
 
 const props = defineProps({
   logItem: {
@@ -60,8 +61,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['update'])
-const dataStore = useDataStore()
+const emit = defineEmits(['edit', 'delete'])
 
 const formatDate = (date) => {
   return new Date(date).toLocaleDateString('en-US', {
@@ -74,17 +74,11 @@ const formatDate = (date) => {
 }
 
 const editLog = () => {
-  emit('update', props.logItem)
+  emit('edit', props.logItem)
 }
 
-const deleteLog = async () => {
-  if (confirm('Are you sure you want to delete this log entry?')) {
-    try {
-      await dataStore.deleteLog(props.logItem.id)
-    } catch (error) {
-      console.error('Error deleting log:', error)
-    }
-  }
+const deleteLog = () => {
+  emit('delete', props.logItem)
 }
 </script>
 
