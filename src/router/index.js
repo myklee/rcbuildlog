@@ -3,7 +3,6 @@ import { createRouter, createWebHistory } from 'vue-router';
 // import LoginPage from '@/views/LoginPage.vue';
 import Login from '../views/Login.vue';
 import UserHomePage from '../views/UserHomePage.vue';
-import MyProjects from '../views/MyProjects.vue';
 import ProjectDetailPage from '../views/ProjectDetailPage.vue';
 // import ProjectDetailPage from '@/views/ProjectDetailPage.vue';
 import SignUp from '../views/SignUp.vue';
@@ -15,7 +14,6 @@ const routes = [
   { path: '/login', component: Login },
   { path: '/signup', component: SignUp },
   { path: '/user-home', component: UserHomePage, meta: { requiresAuth: true } },
-  { path: '/my-projects', component: MyProjects, meta: { requiresAuth: true } },
   { path: '/project/:id', component: ProjectDetailPage, meta: { requiresAuth: true } },
 ];
 
