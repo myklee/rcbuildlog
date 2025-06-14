@@ -1,163 +1,168 @@
 <template>
   <div class="container">
-    <div class="header">
-      <h2>Welcome, {{ user.email }}!</h2>
-      <button @click="showCreateModal = true" class="create-button">
-        Create New Project
-      </button>
+    <div v-if="isLoading" class="loading">
+      Loading your projects...
     </div>
-
-    <!-- Project Management Controls -->
-    <div class="controls">
-      <!-- Search -->
-      <div class="search-container">
-        <input
-          v-model="searchQuery"
-          type="text"
-          placeholder="Search projects..."
-          class="search-input"
-          @input="handleSearch"
-        />
-      </div>
-
-      <!-- Sort Controls -->
-      <div class="sort-controls">
-        <select
-          v-model="filters.sortBy"
-          class="sort-select"
-          @change="handleSortChange"
-        >
-          <option value="created_at">Date</option>
-          <option value="name">Name</option>
-        </select>
-        <button
-          @click="toggleSortOrder"
-          class="sort-button"
-        >
-          {{ filters.sortOrder === 'asc' ? '↑' : '↓' }}
+    <template v-else>
+      <div class="header">
+        <h2>Welcome, {{ user.email }}!</h2>
+        <button @click="showCreateModal = true" class="create-button">
+          Create New Project
         </button>
       </div>
-    </div>
 
-    <h3 class="section-title">Your Projects</h3>
-    
-    <!-- Projects Grid -->
-    <div class="projects-grid">
-      <div v-for="project in displayedProjects" :key="project.id" 
-           class="project-card">
-        <div class="project-image">
-          <img :src="project.image_url" alt="Project preview" 
-               class="project-img" 
-               v-if="project.image_url" />
-          <div v-else class="no-image">
-            No Image
-          </div>
+      <!-- Project Management Controls -->
+      <div class="controls">
+        <!-- Search -->
+        <div class="search-container">
+          <input
+            v-model="searchQuery"
+            type="text"
+            placeholder="Search projects..."
+            class="search-input"
+            @input="handleSearch"
+          />
         </div>
-        <div class="project-header">
-          <router-link :to="`/project/${project.id}`" 
-                      class="project-title">
-            {{ project.name }}
-          </router-link>
-          <button
-            @click="confirmDelete(project)"
-            class="delete-button"
-            title="Delete"
+
+        <!-- Sort Controls -->
+        <div class="sort-controls">
+          <select
+            v-model="filters.sortBy"
+            class="sort-select"
+            @change="handleSortChange"
           >
-            🗑
+            <option value="created_at">Date</option>
+            <option value="name">Name</option>
+          </select>
+          <button
+            @click="toggleSortOrder"
+            class="sort-button"
+          >
+            {{ filters.sortOrder === 'asc' ? '↑' : '↓' }}
           </button>
         </div>
-        <p class="project-description">{{ project.description }}</p>
-        <p class="project-date">
-          {{ formatDate(project.created_at) }}
-        </p>
       </div>
-    </div>
 
-    <!-- Create Project Modal -->
-    <div v-if="showCreateModal" class="modal-overlay">
-      <div class="modal-content">
-        <h3 class="modal-title">Create New Project</h3>
-        
-        <form @submit.prevent="createProject">
-          <div class="form-group">
-            <label class="form-label">Project Name</label>
-            <input
-              v-model="newProject.name"
-              type="text"
-              class="form-input"
-              required
-            />
+      <h3 class="section-title">Your Projects</h3>
+      
+      <!-- Projects Grid -->
+      <div class="projects-grid">
+        <div v-for="project in displayedProjects" :key="project.id" 
+             class="project-card">
+          <div class="project-image">
+            <img :src="project.image_url" alt="Project preview" 
+                 class="project-img" 
+                 v-if="project.image_url" />
+            <div v-else class="no-image">
+              No Image
+            </div>
           </div>
-
-          <div class="form-group">
-            <label class="form-label">Description</label>
-            <textarea
-              v-model="newProject.description"
-              class="form-textarea"
-              rows="3"
-              required
-            ></textarea>
+          <div class="project-header">
+            <router-link :to="`/project/${project.id}`" 
+                        class="project-title">
+              {{ project.name }}
+            </router-link>
+            <button
+              @click="confirmDelete(project)"
+              class="delete-button"
+              title="Delete"
+            >
+              🗑
+            </button>
           </div>
+          <p class="project-description">{{ project.description }}</p>
+          <p class="project-date">
+            {{ formatDate(project.created_at) }}
+          </p>
+        </div>
+      </div>
 
-          <div class="form-group">
-            <label class="form-label">Project Image (optional)</label>
-            <input
-              type="file"
-              accept="image/*"
-              @change="handleImageUpload"
-              class="form-file"
-            />
-          </div>
+      <!-- Create Project Modal -->
+      <div v-if="showCreateModal" class="modal-overlay">
+        <div class="modal-content">
+          <h3 class="modal-title">Create New Project</h3>
+          
+          <form @submit.prevent="createProject">
+            <div class="form-group">
+              <label class="form-label">Project Name</label>
+              <input
+                v-model="newProject.name"
+                type="text"
+                class="form-input"
+                required
+              />
+            </div>
 
+            <div class="form-group">
+              <label class="form-label">Description</label>
+              <textarea
+                v-model="newProject.description"
+                class="form-textarea"
+                rows="3"
+                required
+              ></textarea>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Project Image (optional)</label>
+              <input
+                type="file"
+                accept="image/*"
+                @change="handleImageUpload"
+                class="form-file"
+              />
+            </div>
+
+            <div class="modal-actions">
+              <button
+                type="button"
+                @click="showCreateModal = false"
+                class="cancel-button"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                class="submit-button"
+              >
+                Create Project
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Delete Confirmation Modal -->
+      <div v-if="showDeleteModal" class="modal-overlay">
+        <div class="modal-content">
+          <h3 class="modal-title">Delete Project</h3>
+          <p class="modal-message">Are you sure you want to delete "{{ projectToDelete?.name }}"? This action cannot be undone.</p>
           <div class="modal-actions">
             <button
-              type="button"
-              @click="showCreateModal = false"
+              @click="showDeleteModal = false"
               class="cancel-button"
             >
               Cancel
             </button>
             <button
-              type="submit"
-              class="submit-button"
+              @click="deleteProject"
+              class="delete-confirm-button"
             >
-              Create Project
+              Delete
             </button>
           </div>
-        </form>
-      </div>
-    </div>
-
-    <!-- Delete Confirmation Modal -->
-    <div v-if="showDeleteModal" class="modal-overlay">
-      <div class="modal-content">
-        <h3 class="modal-title">Delete Project</h3>
-        <p class="modal-message">Are you sure you want to delete "{{ projectToDelete?.name }}"? This action cannot be undone.</p>
-        <div class="modal-actions">
-          <button
-            @click="showDeleteModal = false"
-            class="cancel-button"
-          >
-            Cancel
-          </button>
-          <button
-            @click="deleteProject"
-            class="delete-confirm-button"
-          >
-            Delete
-          </button>
         </div>
       </div>
-    </div>
 
-    <button @click="logout" class="logout-button">
-      Logout
-    </button>
+      <button @click="logout" class="logout-button">
+        Logout
+      </button>
+    </template>
   </div>
 </template>
 
 <script setup>
-import { computed, ref, watch } from 'vue'
+import { computed, ref, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useDataStore } from '../store/dataStore'
 
@@ -166,6 +171,7 @@ const router = useRouter()
 
 const user = computed(() => dataStore.getUser)
 const projects = computed(() => dataStore.getProjects)
+const isLoading = ref(true)
 
 // Search and filter state
 const searchQuery = ref('')
@@ -276,6 +282,26 @@ const logout = () => {
 }
 
 // Initialize
+onMounted(async () => {
+  try {
+    isLoading.value = true
+    // First ensure auth is initialized
+    await dataStore.initializeAuth()
+    
+    // Then fetch projects if user is logged in
+    if (dataStore.loggedInUser) {
+      await dataStore.fetchProjects()
+    } else {
+      // If no user is logged in, redirect to login
+      router.push('/login')
+    }
+  } catch (error) {
+    console.error('Error loading user home:', error)
+  } finally {
+    isLoading.value = false
+  }
+})
+
 watch(() => filters.value, async () => {
   await dataStore.setFilters(filters.value)
 }, { deep: true })
@@ -531,5 +557,12 @@ watch(() => filters.value, async () => {
     width: 95%;
     padding: 1rem;
   }
+}
+
+.loading {
+  text-align: center;
+  padding: 2rem;
+  font-size: 1.2rem;
+  color: #666;
 }
 </style>

@@ -27,6 +27,9 @@ export const useDataStore = defineStore('dataStore', {
         if (session) {
           this.loggedInUser = session.user;
           await this.fetchProjects();
+        } else {
+          // Try to load state from localStorage
+          this.loadState();
         }
 
         // Set up auth state change listener
@@ -43,6 +46,8 @@ export const useDataStore = defineStore('dataStore', {
         });
       } catch (error) {
         console.error('Error initializing auth:', error);
+        // Try to load state from localStorage as fallback
+        this.loadState();
       }
     },
 

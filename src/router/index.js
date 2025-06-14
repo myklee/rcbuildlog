@@ -26,19 +26,24 @@ const router = createRouter({
 router.beforeEach(async (to, from, next) => {
   const dataStore = useDataStore();
   
+  // Initialize auth state if not already done
+  if (!dataStore.loggedInUser) {
+    await dataStore.initializeAuth();
+  }
+  
   // Check if route requires auth
   if (to.meta.requiresAuth) {
     // Check if user is logged in
     if (!dataStore.loggedInUser) {
       // Redirect to login
-      next({ name: 'login' });
+      next('/login');
       return;
     }
   }
 
   // If user is logged in and trying to access login page, redirect to user-home
-  if (to.name === 'login' && dataStore.loggedInUser) {
-    next({ name: 'user-home' });
+  if (to.path === '/login' && dataStore.loggedInUser) {
+    next('/user-home');
     return;
   }
 
