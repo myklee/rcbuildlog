@@ -7,9 +7,10 @@ import UserHomePage from '../views/UserHomePage.vue';
 import ProjectDetailPage from '../views/ProjectDetailPage.vue';
 // import ProjectDetailPage from '@/views/ProjectDetailPage.vue';
 import SignUp from '../views/SignUp.vue';
+import HomePage from '../views/HomePage.vue';
 
 const routes = [
-  { path: '/', component: Login },
+  { path: '/', component: HomePage },
   { path: '/login', component: Login },
   { path: '/signup', component: SignUp },
   { path: '/user-home', component: UserHomePage },
