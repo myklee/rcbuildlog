@@ -2,10 +2,10 @@
   <div class="max-w-sm mx-auto mt-10 p-4 border rounded shadow">
     <h2 class="text-xl font-bold mb-4">Login</h2>
 
-    <form @submit.prevent="login">
+    <form @submit.prevent="handleLogin">
       <input
-        v-model="username"
-        placeholder="Enter username"
+        v-model="email"
+        placeholder="Enter email"
         class="w-full mb-3 px-3 py-2 border rounded"
       />
       <input
@@ -23,8 +23,8 @@
       </button>
     </form>
 
-    <p v-if="loginFailed" class="text-red-500 mt-3">
-      Invalid username or password
+    <p v-if="errorMessage" class="text-red-500 mt-3">
+      {{ errorMessage }}
     </p>
   </div>
 </template>
@@ -37,17 +37,22 @@ import { useDataStore } from '../store/dataStore'
 const dataStore = useDataStore()
 const router = useRouter()
 
-const username = ref('')
+const email = ref('')
 const password = ref('')
-const loginFailed = ref(false)
+const errorMessage = ref('')
 
-const login = () => {
-  dataStore.login(username.value, password.value)
-
-  if (dataStore.isAuthenticated) {
-    router.push('/user-home')
-  } else {
-    loginFailed.value = true
+const handleLogin = async () => {
+  try {
+    const success = await dataStore.login(email.value, password.value)
+    if (success) {
+      console.log('Login successful, redirecting to user home')
+      router.push('/user-home')
+    } else {
+      errorMessage.value = 'Invalid email or password'
+    }
+  } catch (error) {
+    console.error('Login error:', error)
+    errorMessage.value = error.message || 'An error occurred during login'
   }
 }
 </script>
