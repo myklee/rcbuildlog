@@ -60,6 +60,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useDataStore } from '../store/dataStore'
+import { supabase } from '../lib/supabase'
 
 const dataStore = useDataStore()
 const featuredProject = ref(null)
@@ -67,17 +68,40 @@ const projectLogs = ref([])
 const totalProjects = ref(0)
 
 const loadRandomProject = async () => {
-  const projects = await dataStore.fetchProjects()
-  if (projects.length > 0) {
-    const randomIndex = Math.floor(Math.random() * projects.length)
-    featuredProject.value = projects[randomIndex]
-    await loadProjectLogs()
+  try {
+    const { data: projects, error } = await supabase
+      .from('projects')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(10)
+
+    if (error) throw error
+
+    if (projects.length > 0) {
+      const randomIndex = Math.floor(Math.random() * projects.length)
+      featuredProject.value = projects[randomIndex]
+      await loadProjectLogs()
+    }
+  } catch (error) {
+    console.error('Error loading random project:', error)
   }
 }
 
 const loadProjectLogs = async () => {
-  if (featuredProject.value) {
-    projectLogs.value = await dataStore.fetchLogs(featuredProject.value.id)
+  if (!featuredProject.value) return
+
+  try {
+    const { data: logs, error } = await supabase
+      .from('logs')
+      .select('*')
+      .eq('project_id', featuredProject.value.id)
+      .order('created_at', { ascending: false })
+      .limit(3)
+
+    if (error) throw error
+    projectLogs.value = logs
+  } catch (error) {
+    console.error('Error loading project logs:', error)
   }
 }
 
@@ -89,8 +113,8 @@ const formatDate = (date) => {
   })
 }
 
-onMounted(async () => {
-  await loadRandomProject()
+onMounted(() => {
+  loadRandomProject()
 })
 </script>
 
