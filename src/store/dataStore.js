@@ -17,53 +17,55 @@ export const useDataStore = defineStore('dataStore', {
   }),
 
   actions: {
-    // Initialize auth state
-    async initializeAuth() {
+    async initialize() {
       try {
         // Get current session
-        const { data: { session }, error } = await supabase.auth.getSession();
-        if (error) throw error;
+        const { data: { session }, error } = await supabase.auth.getSession()
+        if (error) throw error
         
         if (session) {
-          this.loggedInUser = session.user;
-          await this.fetchProjects();
+          this.loggedInUser = session.user
+          await this.fetchProjects()
         } else {
           // Try to load state from localStorage
-          this.loadState();
+          this.loadState()
         }
 
         // Set up auth state change listener
         supabase.auth.onAuthStateChange(async (event, session) => {
           if (event === 'SIGNED_IN' && session) {
-            this.loggedInUser = session.user;
-            await this.fetchProjects();
+            this.loggedInUser = session.user
+            await this.fetchProjects()
           } else if (event === 'SIGNED_OUT') {
-            this.loggedInUser = null;
-            this.projects = [];
-            this.logs = [];
+            this.loggedInUser = null
+            this.projects = []
+            this.logs = []
           }
-          this.saveState();
-        });
-      } catch (error) {
-        console.error('Error initializing auth:', error);
-        // Try to load state from localStorage as fallback
-        this.loadState();
+          this.saveState()
+        })
+      } catch (e) {
+        console.error('Data store initialization error:', e)
+        throw e
       }
     },
 
     // --- AUTH ---
     async login(email, password) {
       try {
-        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
-        this.loggedInUser = data.user;
-        this.isOffline = false;
-        await this.fetchProjects();
-        this.saveState();
-        return true;
+        console.log('Attempting login...')
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+        if (error) throw error
+        
+        console.log('Login successful, setting user:', data.user)
+        this.loggedInUser = data.user
+        this.isOffline = false
+        await this.fetchProjects()
+        this.saveState()
+        
+        return true
       } catch (e) {
-        console.error('Login error:', e);
-        return false;
+        console.error('Login error:', e)
+        return false
       }
     },
 
