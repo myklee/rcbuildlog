@@ -84,14 +84,24 @@ export const useDataStore = defineStore('dataStore', {
 
     async logout() {
       try {
-        await supabase.auth.signOut();
+        console.log('Attempting logout...')
+        const { error } = await supabase.auth.signOut()
+        if (error) throw error
+        
+        console.log('Logout successful')
+        this.loggedInUser = null
+        this.projects = []
+        this.logs = []
+        this.saveState()
+        
+        // Clear any stored session data
+        localStorage.removeItem(LOCAL_STORAGE_KEY)
+        
+        return true
       } catch (error) {
-        console.error('Logout error:', error);
+        console.error('Logout error:', error)
+        return false
       }
-      this.loggedInUser = null;
-      this.projects = [];
-      this.logs = [];
-      this.saveState();
     },
 
     // --- PROJECTS ---

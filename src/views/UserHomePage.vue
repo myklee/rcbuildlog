@@ -276,9 +276,20 @@ const formatDate = (date) => {
   })
 }
 
-const logout = () => {
-  dataStore.logout()
-  router.push('/login')
+const logout = async () => {
+  try {
+    const success = await dataStore.logout()
+    if (success) {
+      console.log('Logout successful, redirecting to login')
+      router.push('/login')
+    } else {
+      console.error('Logout failed')
+      // Optionally show an error message to the user
+    }
+  } catch (error) {
+    console.error('Logout error:', error)
+    // Optionally show an error message to the user
+  }
 }
 
 // Initialize
