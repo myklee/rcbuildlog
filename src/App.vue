@@ -21,7 +21,7 @@ const dataStore = useDataStore();
 const loggedInUser = computed(() => dataStore.loggedInUser);
 
 onMounted(async () => {
-  await dataStore.initializeAuth();
+  await dataStore.initialize();
 });
 </script>
 
