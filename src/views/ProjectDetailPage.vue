@@ -1,6 +1,11 @@
 <template>
   <div v-if="project" class="project-detail">
-    <h2>{{ project.name }}</h2>
+    <div class="project-header">
+      <h2>{{ project.name }}</h2>
+      <button @click="openEditProjectModal" class="edit-project-button">
+        Edit Project
+      </button>
+    </div>
     <p>{{ project.description }}</p>
     
     <!-- Add New Log Entry -->
@@ -122,6 +127,54 @@
         </div>
       </div>
     </div>
+
+    <!-- Edit Project Modal -->
+    <div v-if="showEditProjectModal" class="modal-overlay">
+      <div class="modal-content">
+        <h3>Edit Project</h3>
+        
+        <div class="form-group">
+          <label for="project-name">Project Name</label>
+          <input
+            type="text"
+            id="project-name"
+            v-model="editingProject.name"
+            required
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="project-description">Description</label>
+          <textarea
+            id="project-description"
+            v-model="editingProject.description"
+            rows="4"
+          ></textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="project-image" class="upload-label">
+            <span class="upload-icon">📁</span>
+            <span>Change Project Image</span>
+          </label>
+          <input
+            type="file"
+            id="project-image"
+            accept="image/*"
+            @change="handleProjectImageUpload"
+            class="file-input"
+          />
+          <div v-if="editingProject.image || project.image_url" class="image-preview">
+            <img :src="editingProject.image || project.image_url" alt="Project image" />
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button @click="saveProjectChanges" class="save-button">Save Changes</button>
+          <button @click="showEditProjectModal = false" class="cancel-button">Cancel</button>
+        </div>
+      </div>
+    </div>
   </div>
   <div v-else>
     <p>Project not found.</p>
@@ -156,6 +209,14 @@ const newLogLinks = ref([])
 const newLogTags = ref([])
 const newTag = ref('')
 const editingLog = ref(null)
+
+// Edit project state
+const showEditProjectModal = ref(false)
+const editingProject = ref({
+  name: '',
+  description: '',
+  image: null
+})
 
 // Fetch logs when component mounts
 onMounted(async () => {
@@ -296,6 +357,58 @@ const saveLogEntry = async () => {
     console.error('Error saving log entry:', error)
   }
 }
+
+const openEditProjectModal = () => {
+  editingProject.value = {
+    name: project.value.name,
+    description: project.value.description,
+    image: null
+  }
+  showEditProjectModal.value = true
+}
+
+const handleProjectImageUpload = async (event) => {
+  const file = event.target.files[0]
+  if (!file) return
+
+  try {
+    const fileExt = file.name.split('.').pop()
+    const fileName = `${Math.random()}.${fileExt}`
+    const filePath = `${projectId}/${fileName}`
+
+    const { error: uploadError } = await supabase.storage
+      .from('project-files')
+      .upload(filePath, file)
+
+    if (uploadError) throw uploadError
+
+    const { data: { publicUrl } } = supabase.storage
+      .from('project-files')
+      .getPublicUrl(filePath)
+
+    editingProject.value.image = publicUrl
+  } catch (error) {
+    console.error('Error uploading project image:', error)
+  }
+}
+
+const saveProjectChanges = async () => {
+  if (!editingProject.value.name) {
+    alert("Please enter a project name")
+    return
+  }
+
+  try {
+    await dataStore.updateProject(projectId, {
+      name: editingProject.value.name,
+      description: editingProject.value.description,
+      image_url: editingProject.value.image || project.value.image_url
+    })
+    showEditProjectModal.value = false
+  } catch (error) {
+    console.error('Error updating project:', error)
+  }
+}
 </script>
 
 <style scoped>
@@ -303,6 +416,27 @@ const saveLogEntry = async () => {
   max-width: 800px;
   margin: 0 auto;
   padding: 20px;
+}
+
+.project-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.edit-project-button {
+  padding: 0.5rem 1rem;
+  background-color: #f3f4f6;
+  color: #1f2937;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.edit-project-button:hover {
+  background-color: #e5e7eb;
 }
 
 .add-log-entry {
