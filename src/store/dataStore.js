@@ -14,6 +14,9 @@ export const useDataStore = defineStore('dataStore', () => {
     sortOrder: 'desc'
   });
   const isInitialized = ref(false);
+  const images = ref([]);
+  const videos = ref([]);
+  const documents = ref([]);
 
   // Actions
   async function initialize() {
@@ -47,6 +50,9 @@ export const useDataStore = defineStore('dataStore', () => {
           loggedInUser.value = null
           projects.value = []
           logs.value = []
+          images.value = []
+          videos.value = []
+          documents.value = []
         }
       })
 
@@ -143,6 +149,179 @@ export const useDataStore = defineStore('dataStore', () => {
     }
   }
 
+  // Media Methods
+  async function addImage(image) {
+    if (!loggedInUser.value) return;
+    try {
+      console.log('Adding image:', image)
+      const { data, error } = await supabase
+        .from('images')
+        .insert([{
+          project_id: image.project_id,
+          image_url: image.image_url,
+          image_description: image.image_description,
+          user_id: loggedInUser.value.id
+        }])
+        .select();
+      if (error) throw error;
+      images.value = [...images.value, data[0]];
+      return data[0];
+    } catch (e) {
+      console.error('Error adding image:', e);
+      throw e;
+    }
+  }
+
+  async function fetchImages(projectId) {
+    if (!loggedInUser.value) return [];
+    try {
+      console.log('Fetching images for project:', projectId)
+      const { data, error } = await supabase
+        .from('images')
+        .select('*')
+        .eq('project_id', projectId)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      images.value = data;
+      return data;
+    } catch (e) {
+      console.error('Error fetching images:', e);
+      return [];
+    }
+  }
+
+  async function deleteImage(imageId) {
+    if (!loggedInUser.value) return;
+    try {
+      console.log('Deleting image:', imageId)
+      const { error } = await supabase
+        .from('images')
+        .delete()
+        .eq('id', imageId)
+        .eq('user_id', loggedInUser.value.id);
+      if (error) throw error;
+      images.value = images.value.filter(img => img.id !== imageId);
+    } catch (e) {
+      console.error('Error deleting image:', e);
+      throw e;
+    }
+  }
+
+  async function addVideo(videoData) {
+    if (!loggedInUser.value) return;
+    try {
+      console.log('Adding video:', videoData)
+      const { data, error } = await supabase
+        .from('videos')
+        .insert([{
+          project_id: videoData.project_id,
+          video_url: videoData.video_url,
+          video_description: videoData.video_description,
+          user_id: loggedInUser.value.id
+        }])
+        .select();
+      if (error) throw error;
+      videos.value = [...videos.value, data[0]];
+      return data[0];
+    } catch (e) {
+      console.error('Error adding video:', e);
+      throw e;
+    }
+  }
+
+  async function fetchVideos(projectId) {
+    if (!loggedInUser.value) return [];
+    try {
+      console.log('Fetching videos for project:', projectId)
+      const { data, error } = await supabase
+        .from('videos')
+        .select('*')
+        .eq('project_id', projectId)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      videos.value = data;
+      return data;
+    } catch (e) {
+      console.error('Error fetching videos:', e);
+      return [];
+    }
+  }
+
+  async function deleteVideo(videoId) {
+    if (!loggedInUser.value) return;
+    try {
+      console.log('Deleting video:', videoId)
+      const { error } = await supabase
+        .from('videos')
+        .delete()
+        .eq('id', videoId)
+        .eq('user_id', loggedInUser.value.id);
+      if (error) throw error;
+      videos.value = videos.value.filter(vid => vid.id !== videoId);
+    } catch (e) {
+      console.error('Error deleting video:', e);
+      throw e;
+    }
+  }
+
+  async function addDocument(documentData) {
+    if (!loggedInUser.value) return;
+    try {
+      console.log('Adding document:', documentData)
+      const { data, error } = await supabase
+        .from('documents')
+        .insert([{
+          project_id: documentData.project_id,
+          document_url: documentData.document_url,
+          document_name: documentData.document_name,
+          document_description: documentData.document_description,
+          user_id: loggedInUser.value.id
+        }])
+        .select();
+      if (error) throw error;
+      documents.value = [...documents.value, data[0]];
+      return data[0];
+    } catch (e) {
+      console.error('Error adding document:', e);
+      throw e;
+    }
+  }
+
+  async function fetchDocuments(projectId) {
+    if (!loggedInUser.value) return [];
+    try {
+      console.log('Fetching documents for project:', projectId)
+      const { data, error } = await supabase
+        .from('documents')
+        .select('*')
+        .eq('project_id', projectId)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      documents.value = data;
+      return data;
+    } catch (e) {
+      console.error('Error fetching documents:', e);
+      return [];
+    }
+  }
+
+  async function deleteDocument(documentId) {
+    if (!loggedInUser.value) return;
+    try {
+      console.log('Deleting document:', documentId)
+      const { error } = await supabase
+        .from('documents')
+        .delete()
+        .eq('id', documentId)
+        .eq('user_id', loggedInUser.value.id);
+      if (error) throw error;
+      documents.value = documents.value.filter(doc => doc.id !== documentId);
+    } catch (e) {
+      console.error('Error deleting document:', e);
+      throw e;
+    }
+  }
+
   return {
     // State
     loggedInUser,
@@ -152,12 +331,25 @@ export const useDataStore = defineStore('dataStore', () => {
     searchQuery,
     filters,
     isInitialized,
+    images,
+    videos,
+    documents,
     // Actions
     initialize,
     fetchProjects,
     fetchLogs,
     login,
-    logout
+    logout,
+    // Media Actions
+    addImage,
+    fetchImages,
+    deleteImage,
+    addVideo,
+    fetchVideos,
+    deleteVideo,
+    addDocument,
+    fetchDocuments,
+    deleteDocument
   }
 }, {
   persist: {
