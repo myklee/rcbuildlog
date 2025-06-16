@@ -23,24 +23,23 @@ const router = createRouter({
 });
 
 // Navigation guard
-router.beforeEach(async (to, from, next) => {
+router.beforeEach((to, from, next) => {
   const dataStore = useDataStore();
   
-  await dataStore.initialize();
-  
-  console.log('Navigation guard - Current user:', dataStore.loggedInUser);
-  console.log('Navigation guard - To path:', to.path);
-  
+  // Check if route requires auth
   if (to.meta.requiresAuth && !dataStore.loggedInUser) {
-    console.log('Navigation guard - Redirecting to login');
     next('/login');
-  } else if (to.path === '/login' && dataStore.loggedInUser) {
-    console.log('Navigation guard - Redirecting to user home');
-    next('/user-home');
-  } else {
-    console.log('Navigation guard - Proceeding to:', to.path);
-    next();
+    return;
   }
+  
+  // If user is logged in and trying to access login/signup, redirect to home
+  if (dataStore.loggedInUser && (to.path === '/login' || to.path === '/signup')) {
+    next('/user-home');
+    return;
+  }
+  
+  // Otherwise proceed
+  next();
 });
 
 export default router;
