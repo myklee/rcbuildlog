@@ -187,13 +187,23 @@ const allLogs = computed(() => {
     user_id: vid.user_id
   }))
 
+  const documentLogs = documents.value.map(doc => ({
+    id: doc.id,
+    type: 'document',
+    content: doc.document_url,
+    description: doc.document_description,
+    name: doc.document_name,
+    created_at: doc.created_at,
+    user_id: doc.user_id
+  }))
+
   const textLogs = dataStore.getLogs.map(log => ({
     ...log,
     type: 'text'
   }))
 
   // Combine and sort all logs by created_at
-  return [...textLogs, ...imageLogs, ...videoLogs].sort((a, b) => 
+  return [...textLogs, ...imageLogs, ...videoLogs, ...documentLogs].sort((a, b) => 
     new Date(b.created_at) - new Date(a.created_at)
   )
 })
