@@ -113,6 +113,49 @@ export const useDataStore = defineStore('dataStore', () => {
     }
   }
 
+  async function addLog(log) {
+    if (!loggedInUser.value) return;
+    try {
+      console.log('Adding log:', log)
+      const { data, error } = await supabase
+        .from('logs')
+        .insert([{
+          project_id: log.project_id,
+          title: log.title,
+          content: log.content,
+          links: log.links,
+          tags: log.tags,
+          user_id: loggedInUser.value.id
+        }])
+        .select();
+        
+      if (error) throw error;
+      logs.value = [data[0], ...logs.value];
+      return data[0];
+    } catch (e) {
+      console.error('Error adding log:', e);
+      throw e;
+    }
+  }
+
+  async function deleteLog(logId) {
+    if (!loggedInUser.value) return;
+    try {
+      console.log('Deleting log:', logId)
+      const { error } = await supabase
+        .from('logs')
+        .delete()
+        .eq('id', logId)
+        .eq('user_id', loggedInUser.value.id);
+        
+      if (error) throw error;
+      logs.value = logs.value.filter(log => log.id !== logId);
+    } catch (e) {
+      console.error('Error deleting log:', e);
+      throw e;
+    }
+  }
+
   async function login(email, password) {
     try {
       console.log('Attempting login...')
@@ -338,6 +381,8 @@ export const useDataStore = defineStore('dataStore', () => {
     initialize,
     fetchProjects,
     fetchLogs,
+    addLog,
+    deleteLog,
     login,
     logout,
     // Media Actions
