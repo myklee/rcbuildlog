@@ -13,10 +13,19 @@
       </video>
     </div>
 
+    <!-- Log Document -->
+    <div class="log-document" v-if="logItem.type === 'document'">
+      <a :href="logItem.content" target="_blank" class="doc-link">
+        <span class="doc-icon">📄</span> {{ logItem.name }}
+      </a>
+    </div>
+
     <!-- Log Content -->
     <div class="log-content">
       <div class="log-header">
-        <h3 class="log-title">{{ logItem.type === 'text' ? logItem.title : logItem.type.charAt(0).toUpperCase() + logItem.type.slice(1) }}</h3>
+        <h3 class="log-title">
+          {{ logItem.type === 'text' ? logItem.title : logItem.type.charAt(0).toUpperCase() + logItem.type.slice(1) }}
+        </h3>
         <span class="log-date">{{ formatDate(logItem.created_at) }}</span>
       </div>
 
@@ -115,6 +124,28 @@ const deleteLog = () => {
   max-height: 400px;
   object-fit: cover;
   border-radius: 0.5rem;
+}
+
+.log-document {
+  margin-bottom: 1rem;
+}
+
+.doc-link {
+  font-size: 1.1rem;
+  color: #2563eb;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.doc-link:hover {
+  text-decoration: underline;
+}
+
+.doc-icon {
+  font-size: 1.5rem;
 }
 
 .log-content {
