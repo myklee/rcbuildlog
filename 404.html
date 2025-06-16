@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>RC Build Log</title>
+    <script type="text/javascript">
+      // Single Page Apps for GitHub Pages
+      // MIT License
+      // https://github.com/rafgraph/spa-github-pages
+      var pathSegmentsToKeep = 2; // Changed to 2 to account for /rcbuildlog/
+
+      var l = window.location;
+      var baseUrl = '/rcbuildlog/'; // Add your base URL here
+      
+      // If the current path doesn't start with the base URL, redirect to it
+      if (!l.pathname.startsWith(baseUrl)) {
+        l.replace(baseUrl + '?/' + l.pathname.slice(1) + l.search + l.hash);
+      } else {
+        // Otherwise, handle the routing
+        l.replace(
+          l.protocol + '//' + l.hostname + (l.port ? ':' + l.port : '') +
+          baseUrl + '?/' +
+          l.pathname.slice(baseUrl.length).split('/').join('/') +
+          (l.search ? '&' + l.search.slice(1).replace(/&/g, '~and~') : '') +
+          l.hash
+        );
+      }
+    </script>
+  </head>
+  <body>
+  </body>
+</html> 
