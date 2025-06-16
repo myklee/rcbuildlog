@@ -1,14 +1,14 @@
 <template>
   <div class="log-item">
     <!-- Log Image -->
-    <div class="log-image" v-if="logItem.image_url">
-      <img :src="logItem.image_url" :alt="logItem.title" />
+    <div class="log-image" v-if="logItem.type === 'image'">
+      <img :src="logItem.content" :alt="logItem.description" />
     </div>
 
     <!-- Log Video -->
-    <div class="log-video" v-if="logItem.video_url">
+    <div class="log-video" v-if="logItem.type === 'video'">
       <video controls>
-        <source :src="logItem.video_url" type="video/mp4">
+        <source :src="logItem.content" type="video/mp4">
         Your browser does not support the video tag.
       </video>
     </div>
@@ -16,11 +16,12 @@
     <!-- Log Content -->
     <div class="log-content">
       <div class="log-header">
-        <h3 class="log-title">{{ logItem.title }}</h3>
+        <h3 class="log-title">{{ logItem.type === 'text' ? logItem.title : logItem.type.charAt(0).toUpperCase() + logItem.type.slice(1) }}</h3>
         <span class="log-date">{{ formatDate(logItem.created_at) }}</span>
       </div>
 
-      <p class="log-text">{{ logItem.content }}</p>
+      <p v-if="logItem.type === 'text'" class="log-text">{{ logItem.content }}</p>
+      <p v-if="logItem.description" class="log-description">{{ logItem.description }}</p>
 
       <!-- Links -->
       <div v-if="logItem.links && logItem.links.length" class="log-links">
@@ -141,6 +142,12 @@ const deleteLog = () => {
 .log-text {
   margin: 0 0 16px;
   white-space: pre-wrap;
+}
+
+.log-description {
+  margin: 0 0 16px;
+  color: #666;
+  font-size: 0.95em;
 }
 
 .log-links {
