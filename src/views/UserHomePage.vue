@@ -169,20 +169,25 @@ import { useDataStore } from '../store/dataStore'
 const dataStore = useDataStore()
 const router = useRouter()
 
-const user = computed(() => dataStore.getUser)
-const projects = computed(() => dataStore.getProjects)
+const user = computed(() => dataStore.loggedInUser)
+const projects = computed(() => dataStore.projects)
 const isLoading = ref(true)
 
 // Search and filter state
-const searchQuery = ref('')
-const filters = ref({
-  sortBy: 'created_at',
-  sortOrder: 'desc'
+const searchQuery = ref(dataStore.searchQuery)
+const filters = ref(dataStore.filters)
+
+// Initialize data
+onMounted(() => {
+  console.log('UserHomePage mounted')
+  console.log('User:', dataStore.loggedInUser)
+  console.log('Projects:', dataStore.projects)
+  isLoading.value = false
 })
 
 // Computed property for displayed projects
 const displayedProjects = computed(() => {
-  let filtered = projects.value;
+  let filtered = projects.value || [];
   
   // Apply search filter
   if (searchQuery.value) {
@@ -209,20 +214,19 @@ const newProject = ref({
 
 // Handlers
 const handleSearch = async () => {
-  if (searchQuery.value) {
-    await dataStore.searchProjects(searchQuery.value);
-  } else {
-    await dataStore.fetchProjects();
-  }
+  dataStore.searchQuery = searchQuery.value
+  await dataStore.fetchProjects()
 }
 
 const handleSortChange = async () => {
-  await dataStore.setFilters(filters.value);
+  dataStore.filters = filters.value
+  await dataStore.fetchProjects()
 }
 
 const toggleSortOrder = async () => {
-  filters.value.sortOrder = filters.value.sortOrder === 'asc' ? 'desc' : 'asc';
-  await dataStore.setFilters(filters.value);
+  filters.value.sortOrder = filters.value.sortOrder === 'asc' ? 'desc' : 'asc'
+  dataStore.filters = filters.value
+  await dataStore.fetchProjects()
 }
 
 const handleImageUpload = (event) => {
@@ -291,18 +295,6 @@ const logout = async () => {
     // Optionally show an error message to the user
   }
 }
-
-// Initialize
-onMounted(async () => {
-  try {
-    await dataStore.initialize()
-    await dataStore.fetchProjects()
-  } catch (error) {
-    console.error('Error loading user home:', error)
-  } finally {
-    isLoading.value = false
-  }
-})
 
 // Watch for user changes
 watch(user, (newUser) => {

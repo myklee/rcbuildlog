@@ -112,9 +112,10 @@ import DocumentUploadModal from '../components/DocumentUploadModal.vue'
 const route = useRoute()
 const dataStore = useDataStore()
 const projectId = computed(() => route.params.id)
+const isLoading = ref(true)
 
 const project = computed(() => {
-  return dataStore.getProjects.find(p => p.id === projectId.value)
+  return dataStore.projects.find(p => p.id === projectId.value)
 })
 
 // Modal state
@@ -129,11 +130,19 @@ const videos = ref([])
 const documents = ref([])
 
 onMounted(async () => {
+  console.log('ProjectDetailPage mounted')
   if (projectId.value) {
-    await dataStore.fetchLogs(projectId.value)
-    images.value = await dataStore.fetchImages(projectId.value)
-    videos.value = await dataStore.fetchVideos(projectId.value)
-    documents.value = await dataStore.fetchDocuments(projectId.value)
+    try {
+      isLoading.value = true
+      await dataStore.fetchLogs(projectId.value)
+      images.value = await dataStore.fetchImages(projectId.value)
+      videos.value = await dataStore.fetchVideos(projectId.value)
+      documents.value = await dataStore.fetchDocuments(projectId.value)
+    } catch (error) {
+      console.error('Error loading project details:', error)
+    } finally {
+      isLoading.value = false
+    }
   }
 })
 
@@ -197,7 +206,7 @@ const allLogs = computed(() => {
     user_id: doc.user_id
   }))
 
-  const textLogs = dataStore.getLogs.map(log => ({
+  const textLogs = dataStore.logs.map(log => ({
     ...log,
     type: 'text'
   }))

@@ -65,10 +65,11 @@ import { supabase } from '../lib/supabase'
 const dataStore = useDataStore()
 const featuredProject = ref(null)
 const projectLogs = ref([])
-const totalProjects = ref(0)
+const isLoading = ref(true)
 
 const loadRandomProject = async () => {
   try {
+    isLoading.value = true
     const { data: projects, error } = await supabase
       .from('projects')
       .select('*')
@@ -84,6 +85,8 @@ const loadRandomProject = async () => {
     }
   } catch (error) {
     console.error('Error loading random project:', error)
+  } finally {
+    isLoading.value = false
   }
 }
 
@@ -113,8 +116,9 @@ const formatDate = (date) => {
   })
 }
 
-onMounted(() => {
-  loadRandomProject()
+onMounted(async () => {
+  console.log('HomePage mounted')
+  await loadRandomProject()
 })
 </script>
 
