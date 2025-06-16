@@ -543,6 +543,66 @@ export const useDataStore = defineStore('dataStore', {
         throw e;
       }
     },
+
+    async addDocument(documentData) {
+      if (!this.loggedInUser) return;
+      try {
+        const { data, error } = await supabase
+          .from('documents')
+          .insert([
+            {
+              project_id: documentData.project_id,
+              user_id: this.loggedInUser.id,
+              document_url: documentData.document_url,
+              document_name: documentData.document_name,
+              document_description: documentData.document_description
+            }
+          ])
+          .select()
+        if (error) throw error
+        this.documents = [...(this.documents || []), data[0]]
+        this.saveState()
+        return data[0]
+      } catch (e) {
+        console.error('Error adding document:', e)
+        throw e
+      }
+    },
+
+    async fetchDocuments(projectId) {
+      if (!this.loggedInUser) return [];
+      try {
+        const { data, error } = await supabase
+          .from('documents')
+          .select('*')
+          .eq('project_id', projectId)
+          .order('created_at', { ascending: false })
+        if (error) throw error
+        this.documents = data
+        this.saveState()
+        return data
+      } catch (e) {
+        console.error('Error fetching documents:', e)
+        return []
+      }
+    },
+
+    async deleteDocument(documentId) {
+      if (!this.loggedInUser) return;
+      try {
+        const { error } = await supabase
+          .from('documents')
+          .delete()
+          .eq('id', documentId)
+          .eq('user_id', this.loggedInUser.id)
+        if (error) throw error
+        this.documents = (this.documents || []).filter(doc => doc.id !== documentId)
+        this.saveState()
+      } catch (e) {
+        console.error('Error deleting document:', e)
+        throw e
+      }
+    },
   },
 
   getters: {
