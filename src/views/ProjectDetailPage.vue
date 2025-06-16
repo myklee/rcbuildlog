@@ -9,6 +9,7 @@
       <button class="add-button" @click="showLogTextModal = true">Add Log Entry</button>
       <button class="add-button" @click="showImageModal = true">Add Image</button>
       <button class="add-button" @click="showVideoModal = true">Add Video</button>
+      <button class="add-button" @click="showDocumentModal = true">Add Document</button>
     </div>
 
     <!-- Combined Log Entries -->
@@ -52,6 +53,22 @@
       </div>
     </div>
 
+    <!-- Documents Section -->
+    <div v-if="documents.length" class="media-section">
+      <h2>Documents</h2>
+      <div class="media-list">
+        <div v-for="doc in documents" :key="doc.id" class="media-item">
+          <a :href="doc.document_url" target="_blank" class="doc-link">
+            <span class="doc-icon">📄</span> {{ doc.document_name }}
+          </a>
+          <div class="media-desc">{{ doc.document_description }}</div>
+          <div class="media-actions">
+            <button class="delete-btn" @click="confirmDeleteDocument(doc)">Delete</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <LogTextModal
       :show="showLogTextModal"
       :projectId="projectId"
@@ -70,6 +87,12 @@
       @close="showVideoModal = false"
       @saved="handleVideoSaved"
     />
+    <DocumentUploadModal
+      :show="showDocumentModal"
+      :projectId="projectId"
+      @close="showDocumentModal = false"
+      @saved="handleDocumentSaved"
+    />
   </div>
   <div v-else>
     <p>Project not found.</p>
@@ -84,6 +107,7 @@ import LogItem from '../components/LogItem.vue'
 import LogTextModal from '../components/LogTextModal.vue'
 import ImageUploadModal from '../components/ImageUploadModal.vue'
 import VideoUploadModal from '../components/VideoUploadModal.vue'
+import DocumentUploadModal from '../components/DocumentUploadModal.vue'
 
 const route = useRoute()
 const dataStore = useDataStore()
@@ -97,16 +121,19 @@ const project = computed(() => {
 const showLogTextModal = ref(false)
 const showImageModal = ref(false)
 const showVideoModal = ref(false)
+const showDocumentModal = ref(false)
 const editingLog = ref(null)
 
 const images = ref([])
 const videos = ref([])
+const documents = ref([])
 
 onMounted(async () => {
   if (projectId.value) {
     await dataStore.fetchLogs(projectId.value)
     images.value = await dataStore.fetchImages(projectId.value)
     videos.value = await dataStore.fetchVideos(projectId.value)
+    documents.value = await dataStore.fetchDocuments(projectId.value)
   }
 })
 
@@ -133,6 +160,11 @@ const handleImageSaved = async () => {
 const handleVideoSaved = async () => {
   videos.value = await dataStore.fetchVideos(projectId.value)
   showVideoModal.value = false
+}
+
+const handleDocumentSaved = async () => {
+  documents.value = await dataStore.fetchDocuments(projectId.value)
+  showDocumentModal.value = false
 }
 
 // Convert images and videos to log entries format
@@ -211,6 +243,17 @@ const confirmDeleteVideo = async (vid) => {
       videos.value = await dataStore.fetchVideos(projectId.value)
     } catch (error) {
       console.error('Error deleting video:', error)
+    }
+  }
+}
+
+const confirmDeleteDocument = async (doc) => {
+  if (confirm('Are you sure you want to delete this document?')) {
+    try {
+      await dataStore.deleteDocument(doc.id)
+      documents.value = await dataStore.fetchDocuments(projectId.value)
+    } catch (error) {
+      console.error('Error deleting document:', error)
     }
   }
 }
@@ -333,5 +376,23 @@ const confirmDeleteVideo = async (vid) => {
 
 .delete-btn:hover {
   background-color: #dc2626;
+}
+
+.doc-link {
+  font-size: 1.1rem;
+  color: #2563eb;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.doc-link:hover {
+  text-decoration: underline;
+}
+
+.doc-icon {
+  font-size: 1.5rem;
 }
 </style>
