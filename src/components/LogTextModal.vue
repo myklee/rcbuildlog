@@ -1,118 +1,216 @@
 <template>
-  <div v-if="show" class="modal-overlay" @click.self="closeModal">
-    <div class="modal-content">
-      <h3>Add Log Entry</h3>
-      <form @submit.prevent="saveLogText">
-        <div class="form-group">
-          <label for="notes">Notes *</label>
-          <textarea
-            id="notes"
-            v-model="notes"
-            required
-            rows="4"
-            placeholder="Enter your notes here..."
-          ></textarea>
+  <div v-if="show" class="modal-overlay" @click="closeModal">
+    <div class="modal-content" @click.stop>
+      <h2 class="text-xl font-bold mb-4">Add Log Entry</h2>
+      
+      <div class="form-group">
+        <label for="title">Title</label>
+        <input 
+          id="title"
+          v-model="title"
+          type="text"
+          class="w-full p-2 border rounded"
+          placeholder="Enter a title for your log entry"
+          required
+        />
+      </div>
+
+      <div class="form-group">
+        <label for="content">Content</label>
+        <textarea
+          id="content"
+          v-model="content"
+          class="w-full p-2 border rounded"
+          rows="6"
+          placeholder="Write your log entry here..."
+          required
+        ></textarea>
+      </div>
+
+      <div class="form-group">
+        <label>Links</label>
+        <div v-for="(link, index) in links" :key="index" class="link-item">
+          <input
+            v-model="links[index].url"
+            type="url"
+            class="link-input"
+            placeholder="Enter URL"
+          />
+          <button @click="removeLink(index)" class="remove-btn">Remove</button>
         </div>
-        <div class="form-group">
-          <label>Links</label>
-          <div v-for="(link, index) in links" :key="index" class="link-item">
-            <input
-              type="text"
-              v-model="link.url"
-              placeholder="Enter URL"
-              class="link-input"
-            />
-            <button type="button" @click="removeLink(index)" class="remove-btn">×</button>
+        <button @click="addLink" class="add-btn">Add Link</button>
+      </div>
+
+      <div class="form-group">
+        <label>Tags</label>
+        <div class="tags-container">
+          <div v-for="(tag, index) in tags" :key="index" class="tag">
+            {{ tag }}
+            <button @click="removeTag(index)" class="text-red-500">&times;</button>
           </div>
-          <button type="button" @click="addLink" class="add-btn">Add Link</button>
         </div>
-        <div class="form-group">
-          <label>Tags</label>
-          <div class="tags-container">
-            <div v-for="(tag, index) in tags" :key="index" class="tag">
-              {{ tag }}
-              <button type="button" @click="removeTag(index)" class="remove-btn">×</button>
-            </div>
-          </div>
-          <div class="tag-input-container">
-            <input
-              type="text"
-              v-model="newTag"
-              @keydown.enter.prevent="addTag"
-              placeholder="Add a tag and press Enter"
-              class="tag-input"
-            />
-          </div>
+        <div class="tag-input-container">
+          <input
+            v-model="newTag"
+            @keyup.enter="addTag"
+            type="text"
+            class="tag-input"
+            placeholder="Add a tag and press Enter"
+          />
         </div>
-        <div class="modal-actions">
-          <button type="button" @click="closeModal" class="cancel-btn">Cancel</button>
-          <button type="submit" class="save-btn">Save Entry</button>
-        </div>
-      </form>
+      </div>
+
+      <div class="modal-actions">
+        <button @click="closeModal" class="cancel-btn">Cancel</button>
+        <button 
+          @click="saveLog" 
+          class="save-btn"
+          :disabled="isSaving || !title || !content"
+        >
+          {{ isSaving ? 'Saving...' : 'Save' }}
+        </button>
+      </div>
     </div>
   </div>
 </template>
 
-<script setup>
-import { ref } from 'vue'
-import { useDataStore } from '../store/dataStore'
+<script>
+import { ref, onMounted, onUnmounted, watch } from 'vue';
+import { useDataStore } from '../store/dataStore';
 
-const props = defineProps({
-  show: Boolean,
-  projectId: String
-})
-const emit = defineEmits(['close', 'saved'])
-const dataStore = useDataStore()
+export default {
+  name: 'LogTextModal',
+  props: {
+    show: {
+      type: Boolean,
+      required: true
+    },
+    projectId: {
+      type: String,
+      required: true
+    }
+  },
+  emits: ['close', 'saved'],
+  setup(props, { emit }) {
+    const store = useDataStore();
+    const title = ref('');
+    const content = ref('');
+    const links = ref([]);
+    const tags = ref([]);
+    const newLink = ref('');
+    const newTag = ref('');
+    const isSaving = ref(false);
 
-const notes = ref('')
-const links = ref([])
-const tags = ref([])
-const newTag = ref('')
+    // Auto-save draft every 2 seconds
+    let autoSaveInterval;
 
-const closeModal = () => {
-  emit('close')
-  resetForm()
-}
-const resetForm = () => {
-  notes.value = ''
-  links.value = []
-  tags.value = []
-  newTag.value = ''
-}
-const addLink = () => {
-  links.value.push({ url: '' })
-}
-const removeLink = (index) => {
-  links.value.splice(index, 1)
-}
-const addTag = () => {
-  if (newTag.value.trim()) {
-    tags.value.push(newTag.value.trim())
-    newTag.value = ''
+    onMounted(() => {
+      // Restore draft if exists
+      if (store.currentDraft) {
+        title.value = store.currentDraft.title || '';
+        content.value = store.currentDraft.content || '';
+        links.value = store.currentDraft.links || [];
+        tags.value = store.currentDraft.tags || [];
+      }
+
+      // Start auto-save
+      autoSaveInterval = setInterval(() => {
+        if (title.value || content.value || links.value.length > 0 || tags.value.length > 0) {
+          store.saveDraft({
+            title: title.value,
+            content: content.value,
+            links: links.value,
+            tags: tags.value
+          });
+        }
+      }, 2000);
+    });
+
+    // Clean up auto-save on unmount
+    onUnmounted(() => {
+      if (autoSaveInterval) {
+        clearInterval(autoSaveInterval);
+      }
+    });
+
+    // Watch for modal close to clear draft
+    watch(() => props.show, (newVal) => {
+      if (!newVal) {
+        store.clearDraft();
+      }
+    });
+
+    function closeModal() {
+      emit('close');
+    }
+
+    function addLink() {
+      links.value.push({ url: '' });
+    }
+
+    function removeLink(index) {
+      links.value.splice(index, 1);
+    }
+
+    function addTag() {
+      if (newTag.value.trim()) {
+        tags.value.push(newTag.value.trim());
+        newTag.value = '';
+      }
+    }
+
+    function removeTag(index) {
+      tags.value.splice(index, 1);
+    }
+
+    async function saveLog() {
+      if (!title.value || !content.value) return;
+      
+      isSaving.value = true;
+      try {
+        await store.addLog({
+          project_id: props.projectId,
+          title: title.value,
+          content: content.value,
+          links: links.value.filter(link => link.url.trim()),
+          tags: tags.value
+        });
+        
+        // Clear draft after successful save
+        store.clearDraft();
+        
+        // Reset form
+        title.value = '';
+        content.value = '';
+        links.value = [];
+        tags.value = [];
+        
+        emit('saved');
+        emit('close');
+      } catch (error) {
+        console.error('Error saving log:', error);
+      } finally {
+        isSaving.value = false;
+      }
+    }
+
+    return {
+      title,
+      content,
+      links,
+      tags,
+      newLink,
+      newTag,
+      isSaving,
+      closeModal,
+      addLink,
+      removeLink,
+      addTag,
+      removeTag,
+      saveLog
+    };
   }
-}
-const removeTag = (index) => {
-  tags.value.splice(index, 1)
-}
-const saveLogText = async () => {
-  if (!notes.value) {
-    alert('Please fill in all required fields')
-    return
-  }
-  try {
-    await dataStore.addLog({
-      project_id: props.projectId,
-      title: notes.value.substring(0, 100),
-      content: notes.value,
-      links: links.value.filter(link => link.url.trim()),
-      tags: tags.value
-    })
-    emit('saved')
-    closeModal()
-  } catch (error) {
-    alert('Failed to save log entry.')
-  }
-}
+};
 </script>
 
 <style scoped>
@@ -150,12 +248,15 @@ const saveLogText = async () => {
   color: #374151;
 }
 
-textarea {
+input, textarea {
   width: 100%;
   padding: 0.75rem;
   border: 1px solid #d1d5db;
   border-radius: 0.375rem;
   font-size: 1rem;
+}
+
+textarea {
   resize: vertical;
 }
 
@@ -249,5 +350,10 @@ textarea {
 
 .save-btn:hover {
   background: #2563eb;
+}
+
+.save-btn:disabled {
+  background: #93c5fd;
+  cursor: not-allowed;
 }
 </style> 
