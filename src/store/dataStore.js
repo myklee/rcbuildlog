@@ -17,6 +17,7 @@ export const useDataStore = defineStore('dataStore', () => {
   const images = ref([]);
   const videos = ref([]);
   const documents = ref([]);
+  const currentDraft = ref(null);
 
   // Actions
   async function initialize() {
@@ -365,6 +366,16 @@ export const useDataStore = defineStore('dataStore', () => {
     }
   }
 
+  function saveDraft(draft) {
+    console.log('Saving draft:', draft);
+    currentDraft.value = draft;
+  }
+
+  function clearDraft() {
+    console.log('Clearing draft');
+    currentDraft.value = null;
+  }
+
   return {
     // State
     loggedInUser,
@@ -377,6 +388,7 @@ export const useDataStore = defineStore('dataStore', () => {
     images,
     videos,
     documents,
+    currentDraft,
     // Actions
     initialize,
     fetchProjects,
@@ -394,7 +406,10 @@ export const useDataStore = defineStore('dataStore', () => {
     deleteVideo,
     addDocument,
     fetchDocuments,
-    deleteDocument
+    deleteDocument,
+    // Draft Actions
+    saveDraft,
+    clearDraft
   }
 }, {
   persist: {
