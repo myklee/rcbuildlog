@@ -1,8 +1,18 @@
 <template>
   <div v-if="project" class="project-detail">
     <div class="project-header">
-      <h1>{{ project.name }}</h1>
-      <p class="description">{{ project.description }}</p>
+      <div class="project-info">
+        <h1>{{ project.name }}</h1>
+        <p class="description">{{ project.description }}</p>
+        <div v-if="project.tags && project.tags.length" class="tags-list">
+          <span v-for="tag in project.tags" :key="tag" class="tag">
+            {{ tag }}
+          </span>
+        </div>
+      </div>
+      <div class="project-actions">
+        <button class="edit-btn" @click="showEditModal = true">Edit Project</button>
+      </div>
     </div>
 
     <div class="add-entry-buttons">
@@ -93,6 +103,15 @@
       @close="showDocumentModal = false"
       @saved="handleDocumentSaved"
     />
+
+    <!-- Add EditProjectModal -->
+    <EditProjectModal
+      v-if="showEditModal"
+      :show="showEditModal"
+      :project="project"
+      @close="showEditModal = false"
+      @saved="handleProjectUpdated"
+    />
   </div>
   <div v-else>
     <p>Project not found.</p>
@@ -108,6 +127,7 @@ import LogTextModal from '../components/LogTextModal.vue'
 import ImageUploadModal from '../components/ImageUploadModal.vue'
 import VideoUploadModal from '../components/VideoUploadModal.vue'
 import DocumentUploadModal from '../components/DocumentUploadModal.vue'
+import EditProjectModal from '../components/EditProjectModal.vue'
 
 const route = useRoute()
 const dataStore = useDataStore()
@@ -124,6 +144,7 @@ const showImageModal = ref(false)
 const showVideoModal = ref(false)
 const showDocumentModal = ref(false)
 const editingLog = ref(null)
+const showEditModal = ref(false)
 
 const images = ref([])
 const videos = ref([])
@@ -276,6 +297,12 @@ const confirmDeleteDocument = async (doc) => {
     }
   }
 }
+
+// Add project update handler
+const handleProjectUpdated = async () => {
+  await dataStore.fetchProjects() // Refresh projects list
+  showEditModal.value = false
+}
 </script>
 
 <style scoped>
@@ -286,7 +313,20 @@ const confirmDeleteDocument = async (doc) => {
 }
 
 .project-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
   margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.project-info {
+  flex: 1;
+}
+
+.project-actions {
+  margin-left: 1rem;
 }
 
 .project-header h1 {
@@ -413,5 +453,34 @@ const confirmDeleteDocument = async (doc) => {
 
 .doc-icon {
   font-size: 1.5rem;
+}
+
+.edit-btn {
+  padding: 0.5rem 1rem;
+  background: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.875rem;
+}
+
+.edit-btn:hover {
+  background: #2563eb;
+}
+
+.tags-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.tag {
+  background: #e5e7eb;
+  color: #374151;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.875rem;
 }
 </style>

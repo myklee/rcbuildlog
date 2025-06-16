@@ -91,6 +91,7 @@ export const useDataStore = defineStore('dataStore', () => {
       return data;
     } catch (e) {
       console.error('Error fetching projects:', e);
+      isOffline.value = true;
       return [];
     }
   }
@@ -376,6 +377,59 @@ export const useDataStore = defineStore('dataStore', () => {
     currentDraft.value = null;
   }
 
+  async function updateProject(project) {
+    if (!loggedInUser.value) return;
+    try {
+      console.log('Updating project:', project);
+      const { data, error } = await supabase
+        .from('projects')
+        .update({
+          name: project.name,
+          description: project.description,
+          tags: project.tags || []
+        })
+        .eq('id', project.id)
+        .eq('user_id', loggedInUser.value.id)
+        .select();
+        
+      if (error) throw error;
+      
+      // Update the project in the local state
+      const index = projects.value.findIndex(p => p.id === project.id);
+      if (index !== -1) {
+        projects.value[index] = data[0];
+      }
+      
+      return data[0];
+    } catch (e) {
+      console.error('Error updating project:', e);
+      throw e;
+    }
+  }
+
+  async function addProject(project) {
+    if (!loggedInUser.value) return;
+    try {
+      console.log('Adding project:', project);
+      const { data, error } = await supabase
+        .from('projects')
+        .insert([{
+          name: project.name,
+          description: project.description,
+          tags: project.tags || [],
+          user_id: loggedInUser.value.id
+        }])
+        .select();
+        
+      if (error) throw error;
+      projects.value = [...projects.value, data[0]];
+      return data[0];
+    } catch (e) {
+      console.error('Error adding project:', e);
+      throw e;
+    }
+  }
+
   return {
     // State
     loggedInUser,
@@ -409,7 +463,9 @@ export const useDataStore = defineStore('dataStore', () => {
     deleteDocument,
     // Draft Actions
     saveDraft,
-    clearDraft
+    clearDraft,
+    updateProject,
+    addProject
   }
 }, {
   persist: {
