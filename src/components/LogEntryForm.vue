@@ -14,45 +14,8 @@
           ></textarea>
         </div>
 
-        <div class="form-group">
-          <label>Image</label>
-          <div class="upload-container">
-            <input
-              type="file"
-              accept="image/*"
-              @change="handleImageUpload"
-              class="hidden"
-              ref="imageInput"
-            />
-            <button type="button" @click="$refs.imageInput.click()" class="upload-btn">
-              Choose Image
-            </button>
-            <div v-if="newLogImage" class="preview-container">
-              <img :src="newLogImage.url" alt="Preview" class="preview-image" />
-              <button type="button" @click="removeImage" class="remove-btn">×</button>
-            </div>
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label>Video</label>
-          <div class="upload-container">
-            <input
-              type="file"
-              accept="video/*"
-              @change="handleVideoUpload"
-              class="hidden"
-              ref="videoInput"
-            />
-            <button type="button" @click="$refs.videoInput.click()" class="upload-btn">
-              Choose Video
-            </button>
-            <div v-if="newLogVideo" class="preview-container">
-              <video :src="newLogVideo.url" controls class="preview-video"></video>
-              <button type="button" @click="removeVideo" class="remove-btn">×</button>
-            </div>
-          </div>
-        </div>
+        <ImageUploadForm v-model="image" />
+        <VideoUploadForm v-model="video" />
 
         <div class="form-group">
           <label>Links</label>
@@ -99,6 +62,8 @@
 <script setup>
 import { ref, onMounted, watch } from 'vue'
 import { useDataStore } from '../store/dataStore'
+import ImageUploadForm from './log-forms/ImageUploadForm.vue'
+import VideoUploadForm from './log-forms/VideoUploadForm.vue'
 
 const props = defineProps({
   show: {
@@ -120,9 +85,9 @@ const emit = defineEmits(['close', 'saved'])
 const dataStore = useDataStore()
 
 // Form state
-const newLogImage = ref(null)
-const newLogVideo = ref(null)
 const newLogNotes = ref('')
+const image = ref({ file: null, url: '', description: '' })
+const video = ref({ file: null, url: '', description: '' })
 const newLogLinks = ref([])
 const newLogTags = ref([])
 const newTag = ref('')
@@ -131,8 +96,16 @@ const newTag = ref('')
 onMounted(() => {
   if (props.editingLog) {
     newLogNotes.value = props.editingLog.content
-    newLogImage.value = props.editingLog.image_url ? { url: props.editingLog.image_url } : null
-    newLogVideo.value = props.editingLog.video_url ? { url: props.editingLog.video_url } : null
+    image.value = {
+      url: props.editingLog.image_url || '',
+      description: props.editingLog.image_description || '',
+      file: null
+    }
+    video.value = {
+      url: props.editingLog.video_url || '',
+      description: props.editingLog.video_description || '',
+      file: null
+    }
     newLogLinks.value = props.editingLog.links || []
     newLogTags.value = props.editingLog.tags || []
   }
@@ -142,8 +115,16 @@ onMounted(() => {
 watch(() => props.editingLog, (newLog) => {
   if (newLog) {
     newLogNotes.value = newLog.content
-    newLogImage.value = newLog.image_url ? { url: newLog.image_url } : null
-    newLogVideo.value = newLog.video_url ? { url: newLog.video_url } : null
+    image.value = {
+      url: newLog.image_url || '',
+      description: newLog.image_description || '',
+      file: null
+    }
+    video.value = {
+      url: newLog.video_url || '',
+      description: newLog.video_description || '',
+      file: null
+    }
     newLogLinks.value = newLog.links || []
     newLogTags.value = newLog.tags || []
   } else {
@@ -156,65 +137,26 @@ const closeModal = () => {
 }
 
 const resetForm = () => {
-  newLogImage.value = null
-  newLogVideo.value = null
   newLogNotes.value = ''
+  image.value = { file: null, url: '', description: '' }
+  video.value = { file: null, url: '', description: '' }
   newLogLinks.value = []
   newLogTags.value = []
   newTag.value = ''
 }
 
-const handleImageUpload = (event) => {
-  const file = event.target.files[0]
-  if (file) {
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      newLogImage.value = {
-        file,
-        url: e.target.result
-      }
-    }
-    reader.readAsDataURL(file)
-  }
-}
-
-const handleVideoUpload = (event) => {
-  const file = event.target.files[0]
-  if (file) {
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      newLogVideo.value = {
-        file,
-        url: e.target.result
-      }
-    }
-    reader.readAsDataURL(file)
-  }
-}
-
-const removeImage = () => {
-  newLogImage.value = null
-}
-
-const removeVideo = () => {
-  newLogVideo.value = null
-}
-
 const addLink = () => {
   newLogLinks.value.push({ url: '' })
 }
-
 const removeLink = (index) => {
   newLogLinks.value.splice(index, 1)
 }
-
 const addTag = () => {
   if (newTag.value.trim()) {
     newLogTags.value.push(newTag.value.trim())
     newTag.value = ''
   }
 }
-
 const removeTag = (index) => {
   newLogTags.value.splice(index, 1)
 }
@@ -230,8 +172,10 @@ const saveLogEntry = async () => {
       project_id: props.projectId,
       title: newLogNotes.value.substring(0, 100),
       content: newLogNotes.value,
-      image_url: newLogImage.value?.url,
-      video_url: newLogVideo.value?.url,
+      image_url: image.value.url,
+      image_description: image.value.description,
+      video_url: video.value.url,
+      video_description: video.value.description,
       links: newLogLinks.value.filter(link => link.url.trim()),
       tags: newLogTags.value
     }

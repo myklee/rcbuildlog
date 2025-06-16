@@ -374,7 +374,175 @@ export const useDataStore = defineStore('dataStore', {
     setFilters(filters) {
       this.filters = { ...this.filters, ...filters };
       return this.fetchProjects();
-    }
+    },
+
+    async addImage(image) {
+      if (!this.loggedInUser) return;
+      try {
+        const { data, error } = await supabase
+          .from('images')
+          .insert([{
+            project_id: image.project_id,
+            image_url: image.image_url,
+            image_description: image.image_description,
+            user_id: this.loggedInUser.id
+          }])
+          .select();
+        if (error) throw error;
+        // Optionally, you could push to a local images array if you keep one
+        this.isOffline = false;
+        this.saveState();
+        return data[0];
+      } catch (e) {
+        console.error('Error adding image:', e);
+        throw e;
+      }
+    },
+
+    async addVideo(videoData) {
+      if (!this.loggedInUser) return;
+      try {
+        console.log('Adding video to store:', videoData)
+        const { data, error } = await supabase
+          .from('videos')
+          .insert([
+            {
+              project_id: videoData.project_id,
+              user_id: this.loggedInUser.id,
+              video_url: videoData.video_url,
+              video_description: videoData.video_description
+            }
+          ])
+          .select()
+        
+        if (error) {
+          console.error('Supabase error:', error)
+          throw error
+        }
+        
+        console.log('Video added successfully:', data)
+        this.videos = [...this.videos, data[0]]
+        this.saveState()
+        return data[0]
+      } catch (e) {
+        console.error('Error adding video:', e)
+        throw e
+      }
+    },
+
+    async fetchImages(projectId) {
+      if (!this.loggedInUser) return [];
+      try {
+        const { data, error } = await supabase
+          .from('images')
+          .select('*')
+          .eq('project_id', projectId)
+          .order('created_at', { ascending: false });
+        if (error) throw error;
+        this.images = data;
+        this.saveState();
+        return data;
+      } catch (e) {
+        console.error('Error fetching images:', e);
+        return [];
+      }
+    },
+
+    async fetchVideos(projectId) {
+      if (!this.loggedInUser) return [];
+      try {
+        const { data, error } = await supabase
+          .from('videos')
+          .select('*')
+          .eq('project_id', projectId)
+          .order('created_at', { ascending: false });
+        if (error) throw error;
+        this.videos = data;
+        this.saveState();
+        return data;
+      } catch (e) {
+        console.error('Error fetching videos:', e);
+        return [];
+      }
+    },
+
+    async updateImage(imageId, updates) {
+      if (!this.loggedInUser) return;
+      try {
+        const { data, error } = await supabase
+          .from('images')
+          .update(updates)
+          .eq('id', imageId)
+          .eq('user_id', this.loggedInUser.id)
+          .select();
+        if (error) throw error;
+        const index = this.images.findIndex(img => img.id === imageId);
+        if (index !== -1) {
+          this.images[index] = data[0];
+        }
+        this.saveState();
+        return data[0];
+      } catch (e) {
+        console.error('Error updating image:', e);
+        throw e;
+      }
+    },
+
+    async deleteImage(imageId) {
+      if (!this.loggedInUser) return;
+      try {
+        const { error } = await supabase
+          .from('images')
+          .delete()
+          .eq('id', imageId)
+          .eq('user_id', this.loggedInUser.id);
+        if (error) throw error;
+        this.images = this.images.filter(img => img.id !== imageId);
+        this.saveState();
+      } catch (e) {
+        console.error('Error deleting image:', e);
+        throw e;
+      }
+    },
+
+    async updateVideo(videoId, updates) {
+      if (!this.loggedInUser) return;
+      try {
+        const { data, error } = await supabase
+          .from('videos')
+          .update(updates)
+          .eq('id', videoId)
+          .eq('user_id', this.loggedInUser.id)
+          .select();
+        if (error) throw error;
+        const index = this.videos.findIndex(vid => vid.id === videoId);
+        if (index !== -1) {
+          this.videos[index] = data[0];
+        }
+        this.saveState();
+        return data[0];
+      } catch (e) {
+        console.error('Error updating video:', e);
+        throw e;
+      }
+    },
+
+    async deleteVideo(videoId) {
+      if (!this.loggedInUser) return;
+      try {
+        const { error } = await supabase
+          .from('videos')
+          .delete()
+          .eq('id', videoId)
+          .eq('user_id', this.loggedInUser.id);
+        if (error) throw error;
+        this.videos = this.videos.filter(vid => vid.id !== videoId);
+        this.saveState();
+      } catch (e) {
+        console.error('Error deleting video:', e);
+        throw e;
+      }
+    },
   },
 
   getters: {
