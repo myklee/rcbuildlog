@@ -15,6 +15,6 @@ app.use(router);
 
 // Initialize store before mounting
 const dataStore = useDataStore();
-await dataStore.initialize();
-
-app.mount("#app");
+dataStore.initialize().then(() => {
+  app.mount("#app");
+});
