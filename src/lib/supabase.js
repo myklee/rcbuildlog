@@ -9,7 +9,19 @@ if (!supabaseUrl || !supabaseKey) {
   throw new Error('Missing Supabase configuration')
 }
 
-export const supabase = createClient(supabaseUrl, supabaseKey)
+export const supabase = createClient(supabaseUrl, supabaseKey, {
+  auth: {
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: true,
+    storage: window.localStorage
+  },
+  global: {
+    headers: {
+      'Access-Control-Allow-Origin': '*'
+    }
+  }
+})
 
 // Test the connection
 supabase.auth.getSession().then(({ data: { session }, error }) => {

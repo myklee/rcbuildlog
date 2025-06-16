@@ -1,120 +1,85 @@
 import { defineStore } from 'pinia'
+import { ref } from 'vue'
 import { supabase } from '../lib/supabase'
 
-export const useAuthStore = defineStore('auth', {
-  state: () => ({
-    user: null,
-    session: null,
-    loading: true,
-    error: null,
-    lastCheck: null
-  }),
+export const useAuthStore = defineStore('auth', () => {
+  const user = ref(null)
+  const loading = ref(true)
 
-  getters: {
-    isAuthenticated: (state) => !!state.session,
-    userId: (state) => state.user?.id
-  },
+  async function initialize() {
+    try {
+      // Get initial session
+      const { data: { session }, error } = await supabase.auth.getSession()
+      if (error) throw error
+      
+      user.value = session?.user || null
+      
+      // Listen for auth changes
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+        user.value = session?.user || null
+      })
 
-  actions: {
-    async initialize() {
-      try {
-        this.loading = true
-        const { data: { session }, error } = await supabase.auth.getSession()
-        
-        if (error) throw error
-        
-        if (session) {
-          this.session = session
-          this.user = session.user
-        }
-
-        // Set up visibility change listener
-        document.addEventListener('visibilitychange', this.handleVisibilityChange)
-      } catch (error) {
-        console.error('Auth initialization error:', error)
-        this.error = error.message
-      } finally {
-        this.loading = false
+      return () => {
+        subscription.unsubscribe()
       }
-    },
-
-    async handleVisibilityChange() {
-      if (document.visibilityState === 'visible') {
-        await this.checkSession()
-      }
-    },
-
-    async checkSession() {
-      try {
-        // Don't check more often than every 2 minutes
-        const currentTime = Date.now()
-        if (this.lastCheck && currentTime - this.lastCheck < 120000) {
-          return this.isAuthenticated
-        }
-        
-        this.lastCheck = currentTime
-        const { data: { session }, error } = await supabase.auth.getSession()
-        
-        if (error || !session) {
-          this.session = null
-          this.user = null
-          return false
-        }
-        
-        // Check if session is expired or about to expire (within 5 minutes)
-        const expiresAt = new Date(session.expires_at * 1000)
-        const currentDate = new Date()
-        const fiveMinutes = 5 * 60 * 1000
-        
-        if (expiresAt.getTime() - currentDate.getTime() < fiveMinutes) {
-          const { data: { session: newSession }, error: refreshError } = 
-            await supabase.auth.refreshSession()
-          
-          if (refreshError || !newSession) {
-            this.session = null
-            this.user = null
-            return false
-          }
-          
-          this.session = newSession
-          this.user = newSession.user
-        }
-        
-        return true
-      } catch (error) {
-        console.error('Session check failed:', error)
-        this.session = null
-        this.user = null
-        return false
-      }
-    },
-
-    async signOut() {
-      try {
-        const { error } = await supabase.auth.signOut()
-        if (error) throw error
-        
-        this.session = null
-        this.user = null
-        this.lastCheck = null
-      } catch (error) {
-        console.error('Sign out error:', error)
-        this.error = error.message
-      }
+    } catch (error) {
+      console.error('Error initializing auth:', error)
+      user.value = null
+    } finally {
+      loading.value = false
     }
   }
-})
 
-// Set up auth state change listener
-supabase.auth.onAuthStateChange((event, session) => {
-  const authStore = useAuthStore()
-  
-  if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-    authStore.session = session
-    authStore.user = session?.user
-  } else if (event === 'SIGNED_OUT') {
-    authStore.session = null
-    authStore.user = null
-    authStore.lastCheck = null
+  async function signIn(email, password) {
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      })
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error('Error signing in:', error)
+      throw error
+    }
+  }
+
+  async function signUp(email, password) {
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password
+      })
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error('Error signing up:', error)
+      throw error
+    }
+  }
+
+  async function signOut() {
+    try {
+      const { error } = await supabase.auth.signOut()
+      if (error) throw error
+      user.value = null
+    } catch (error) {
+      console.error('Error signing out:', error)
+      // Even if there's an error, clear the local user state
+      user.value = null
+      // Clear any local storage items
+      localStorage.removeItem('supabase.auth.token')
+      // Force reload the page to clear any remaining state
+      window.location.href = '/'
+    }
+  }
+
+  return {
+    user,
+    loading,
+    initialize,
+    signIn,
+    signUp,
+    signOut
   }
 }) 
