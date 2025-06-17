@@ -1,5 +1,5 @@
 <template>
-  <div v-if="show" class="modal-overlay" @click.self="closeModal">
+  <div v-if="isAuthenticated && show" class="modal-overlay" @click.self="closeModal">
     <div class="modal-content">
       <h3>Create New Project</h3>
       <form @submit.prevent="createProject">
@@ -57,8 +57,9 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useDataStore } from '../store/dataStore'
+import { useAuthStore } from '../store/authStore'
 
 const props = defineProps({
   show: Boolean
@@ -66,6 +67,8 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'saved'])
 const store = useDataStore()
+const authStore = useAuthStore()
+const isAuthenticated = computed(() => !!authStore.user)
 
 const project = ref({
   name: '',

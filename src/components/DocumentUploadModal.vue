@@ -1,5 +1,5 @@
 <template>
-  <div v-if="show" class="modal-overlay" @click.self="closeModal">
+  <div v-if="isOwner && show" class="modal-overlay" @click.self="closeModal">
     <div class="modal-content">
       <h3>Add Document</h3>
       <form @submit.prevent="saveDocument">
@@ -52,16 +52,21 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useDataStore } from '../store/dataStore'
 import { supabase } from '../lib/supabase'
+import { useAuthStore } from '../store/authStore'
 
 const props = defineProps({
   show: Boolean,
-  projectId: String
+  projectId: String,
+  project: Object
 })
 const emit = defineEmits(['close', 'saved'])
 const dataStore = useDataStore()
+const authStore = useAuthStore()
+const isAuthenticated = computed(() => !!authStore.user)
+const isOwner = computed(() => isAuthenticated.value && props.project && props.project.user_id === authStore.user.id)
 
 const document = ref({ file: null, url: '', name: '', description: '' })
 const isUploading = ref(false)

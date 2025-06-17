@@ -1,5 +1,18 @@
 <template>
-  <div v-if="project" class="project-detail">
+  <div v-if="isLoading" class="text-center py-8">
+    <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
+    <p class="mt-4 text-gray-600">Loading project...</p>
+  </div>
+  <div v-else-if="error" class="text-center py-8">
+    <p class="text-red-500">{{ error }}</p>
+    <button
+      @click="$router.push('/')"
+      class="mt-4 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors"
+    >
+      Back to Projects
+    </button>
+  </div>
+  <div v-else-if="project" class="project-detail">
     <div class="project-header">
       <div class="project-info">
         <h1>{{ project.name }}</h1>
@@ -10,12 +23,12 @@
           </span>
         </div>
       </div>
-      <div class="project-actions">
+      <div class="project-actions" v-if="isAuthenticated">
         <button class="edit-btn" @click="showEditModal = true">Edit Project</button>
       </div>
     </div>
 
-    <div class="add-entry-buttons">
+    <div class="add-entry-buttons" v-if="isAuthenticated">
       <button class="add-button" @click="showLogTextModal = true">Add Log Entry</button>
       <button class="add-button" @click="showImageModal = true">Add Image</button>
       <button class="add-button" @click="showVideoModal = true">Add Video</button>
@@ -28,8 +41,8 @@
         v-for="log in allLogs"
         :key="log.id"
         :logItem="log"
-        @edit="showEditLogModal"
-        @delete="confirmDeleteLog"
+        :project="project"
+        v-bind="isAuthenticated ? { onEdit: showEditLogModal, onDelete: confirmDeleteLog } : {}"
       />
     </div>
 
@@ -40,7 +53,7 @@
         <div v-for="img in images" :key="img.id" class="media-item">
           <img :src="img.image_url" alt="Project Image" class="media-img" />
           <div class="media-desc">{{ img.image_description }}</div>
-          <div class="media-actions">
+          <div class="media-actions" v-if="isAuthenticated && project && project.user_id === authStore.user.id">
             <button class="edit-btn" @click="showEditImageModal(img)">Edit</button>
             <button class="delete-btn" @click="confirmDeleteImage(img)">Delete</button>
           </div>
@@ -55,7 +68,7 @@
         <div v-for="vid in videos" :key="vid.id" class="media-item">
           <video :src="vid.video_url" controls class="media-video"></video>
           <div class="media-desc">{{ vid.video_description }}</div>
-          <div class="media-actions">
+          <div class="media-actions" v-if="isAuthenticated && project && project.user_id === authStore.user.id">
             <button class="edit-btn" @click="showEditVideoModal(vid)">Edit</button>
             <button class="delete-btn" @click="confirmDeleteVideo(vid)">Delete</button>
           </div>
@@ -72,56 +85,57 @@
             <span class="doc-icon">📄</span> {{ doc.document_name }}
           </a>
           <div class="media-desc">{{ doc.document_description }}</div>
-          <div class="media-actions">
+          <div class="media-actions" v-if="isAuthenticated && project && project.user_id === authStore.user.id">
             <button class="delete-btn" @click="confirmDeleteDocument(doc)">Delete</button>
           </div>
         </div>
       </div>
     </div>
 
+    <!-- Modals: Only show if authenticated -->
     <LogTextModal
+      v-if="isAuthenticated"
       :show="showLogTextModal"
       :projectId="projectId"
       @close="showLogTextModal = false"
       @saved="handleLogSaved"
     />
     <ImageUploadModal
+      v-if="isAuthenticated"
       :show="showImageModal"
       :projectId="projectId"
       @close="showImageModal = false"
       @saved="handleImageSaved"
     />
     <VideoUploadModal
+      v-if="isAuthenticated"
       :show="showVideoModal"
       :projectId="projectId"
       @close="showVideoModal = false"
       @saved="handleVideoSaved"
     />
     <DocumentUploadModal
+      v-if="isAuthenticated"
       :show="showDocumentModal"
       :projectId="projectId"
       @close="showDocumentModal = false"
       @saved="handleDocumentSaved"
     />
-
-    <!-- Add EditProjectModal -->
     <EditProjectModal
-      v-if="showEditModal"
+      v-if="isAuthenticated && showEditModal"
       :show="showEditModal"
       :project="project"
       @close="showEditModal = false"
       @saved="handleProjectUpdated"
     />
   </div>
-  <div v-else>
-    <p>Project not found.</p>
-  </div>
 </template>
 
 <script setup>
-import { computed, ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
-import { useDataStore } from '../store/dataStore'
+import { supabase } from '../lib/supabase'
+import { useAuthStore } from '../store/authStore'
 import LogItem from '../components/LogItem.vue'
 import LogTextModal from '../components/LogTextModal.vue'
 import ImageUploadModal from '../components/ImageUploadModal.vue'
@@ -130,13 +144,19 @@ import DocumentUploadModal from '../components/DocumentUploadModal.vue'
 import EditProjectModal from '../components/EditProjectModal.vue'
 
 const route = useRoute()
-const dataStore = useDataStore()
 const projectId = computed(() => route.params.id)
+const project = ref(null)
 const isLoading = ref(true)
+const error = ref(null)
 
-const project = computed(() => {
-  return dataStore.projects.find(p => p.id === projectId.value)
-})
+const allLogs = ref([])
+const images = ref([])
+const videos = ref([])
+const documents = ref([])
+
+// Auth
+const authStore = useAuthStore()
+const isAuthenticated = computed(() => !!authStore.user)
 
 // Modal state
 const showLogTextModal = ref(false)
@@ -146,25 +166,79 @@ const showDocumentModal = ref(false)
 const editingLog = ref(null)
 const showEditModal = ref(false)
 
-const images = ref([])
-const videos = ref([])
-const documents = ref([])
-
 onMounted(async () => {
-  console.log('ProjectDetailPage mounted')
-  if (projectId.value) {
-    try {
-      isLoading.value = true
-      await dataStore.fetchLogs(projectId.value)
-      images.value = await dataStore.fetchImages(projectId.value)
-      videos.value = await dataStore.fetchVideos(projectId.value)
-      documents.value = await dataStore.fetchDocuments(projectId.value)
-    } catch (error) {
-      console.error('Error loading project details:', error)
-    } finally {
-      isLoading.value = false
-    }
+  isLoading.value = true
+  error.value = null
+
+  // Fetch project
+  const { data: projectData, error: fetchError } = await supabase
+    .from('projects')
+    .select('*')
+    .eq('id', projectId.value)
+    .single()
+  if (projectData) {
+    project.value = projectData
+  } else {
+    error.value = fetchError?.message || 'Project not found.'
+    isLoading.value = false
+    return
   }
+
+  // Fetch all logs/media
+  const [logsData, imagesData, videosData, documentsData] = await Promise.all([
+    supabase.from('logs').select('*').eq('project_id', projectId.value).order('created_at', { ascending: false }),
+    supabase.from('images').select('*').eq('project_id', projectId.value).order('created_at', { ascending: false }),
+    supabase.from('videos').select('*').eq('project_id', projectId.value).order('created_at', { ascending: false }),
+    supabase.from('documents').select('*').eq('project_id', projectId.value).order('created_at', { ascending: false }),
+  ])
+
+  // Combine all content into allLogs
+  allLogs.value = [
+    ...(logsData.data || []).map(log => ({
+      ...log,
+      type: 'text'
+    })),
+    ...(imagesData.data || []).map(image => ({
+      id: image.id,
+      project_id: image.project_id,
+      user_id: image.user_id,
+      title: image.title || 'Image',
+      content: image.image_url || image.url,
+      description: image.image_description || image.description || '',
+      created_at: image.created_at,
+      updated_at: image.updated_at,
+      type: 'image'
+    })),
+    ...(videosData.data || []).map(video => ({
+      id: video.id,
+      project_id: video.project_id,
+      user_id: video.user_id,
+      title: video.title || 'Video',
+      content: video.video_url || video.url,
+      description: video.video_description || video.description || '',
+      created_at: video.created_at,
+      updated_at: video.updated_at,
+      type: 'video'
+    })),
+    ...(documentsData.data || []).map(doc => ({
+      id: doc.id,
+      project_id: doc.project_id,
+      user_id: doc.user_id,
+      title: doc.title || doc.document_name || 'Document',
+      content: doc.document_url || doc.url,
+      description: doc.document_description || doc.description || '',
+      created_at: doc.created_at,
+      updated_at: doc.updated_at,
+      type: 'document',
+      name: doc.document_name || doc.title || 'Document'
+    }))
+  ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+
+  images.value = imagesData.data || []
+  videos.value = videosData.data || []
+  documents.value = documentsData.data || []
+
+  isLoading.value = false
 })
 
 const showAddLogModal = () => {
@@ -196,47 +270,6 @@ const handleDocumentSaved = async () => {
   documents.value = await dataStore.fetchDocuments(projectId.value)
   showDocumentModal.value = false
 }
-
-// Convert images and videos to log entries format
-const allLogs = computed(() => {
-  const imageLogs = images.value.map(img => ({
-    id: img.id,
-    type: 'image',
-    content: img.image_url,
-    description: img.image_description,
-    created_at: img.created_at,
-    user_id: img.user_id
-  }))
-
-  const videoLogs = videos.value.map(vid => ({
-    id: vid.id,
-    type: 'video',
-    content: vid.video_url,
-    description: vid.video_description,
-    created_at: vid.created_at,
-    user_id: vid.user_id
-  }))
-
-  const documentLogs = documents.value.map(doc => ({
-    id: doc.id,
-    type: 'document',
-    content: doc.document_url,
-    description: doc.document_description,
-    name: doc.document_name,
-    created_at: doc.created_at,
-    user_id: doc.user_id
-  }))
-
-  const textLogs = dataStore.logs.map(log => ({
-    ...log,
-    type: 'text'
-  }))
-
-  // Combine and sort all logs by created_at
-  return [...textLogs, ...imageLogs, ...videoLogs, ...documentLogs].sort((a, b) => 
-    new Date(b.created_at) - new Date(a.created_at)
-  )
-})
 
 const confirmDeleteLog = async (log) => {
   if (confirm('Are you sure you want to delete this entry?')) {
