@@ -33,7 +33,7 @@
         </div>
         <div class="modal-actions">
           <button type="button" @click="closeModal" class="cancel-btn">Cancel</button>
-          <button type="submit" class="save-btn" :disabled="!video.file || isUploading">
+          <button type="submit" class="save-btn" :disabled="(!video.file && !props.editingVideo) || isUploading">
             {{ isUploading ? 'Uploading...' : 'Save Video' }}
           </button>
         </div>
@@ -43,7 +43,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useDataStore } from '../store/dataStore'
 import { supabase } from '../lib/supabase'
 import { useAuthStore } from '../store/authStore'
@@ -51,7 +51,8 @@ import { useAuthStore } from '../store/authStore'
 const props = defineProps({
   show: Boolean,
   projectId: String,
-  project: Object
+  project: Object,
+  editingVideo: Object
 })
 const emit = defineEmits(['close', 'saved'])
 const dataStore = useDataStore()
@@ -62,15 +63,28 @@ const isOwner = computed(() => isAuthenticated.value && props.project && props.p
 const video = ref({ file: null, url: '', description: '' })
 const isUploading = ref(false)
 
+const resetForm = () => {
+  video.value = { file: null, url: '', description: '' }
+  isUploading.value = false
+}
+
 const closeModal = () => {
   emit('close')
   resetForm()
 }
 
-const resetForm = () => {
-  video.value = { file: null, url: '', description: '' }
-  isUploading.value = false
-}
+// Watch for editingVideo changes
+watch(() => props.editingVideo, (newVideo) => {
+  if (newVideo) {
+    video.value = {
+      file: null,
+      url: newVideo.video_url,
+      description: newVideo.video_description || ''
+    }
+  } else {
+    resetForm()
+  }
+}, { immediate: true })
 
 const handleVideoUpload = (event) => {
   const file = event.target.files[0]
@@ -130,7 +144,7 @@ const uploadToStorage = async (file) => {
 }
 
 const saveVideo = async () => {
-  if (!video.value.file) {
+  if (!video.value.file && !props.editingVideo) {
     alert('Please select a video.')
     return
   }
@@ -139,20 +153,24 @@ const saveVideo = async () => {
     isUploading.value = true
     console.log('Starting video upload process...')
     
-    const videoUrl = await uploadToStorage(video.value.file)
-    console.log('Video uploaded to storage:', videoUrl)
+    let videoUrl = video.value.url
+    if (video.value.file) {
+      videoUrl = await uploadToStorage(video.value.file)
+      console.log('Video uploaded to storage:', videoUrl)
+    }
 
-    console.log('Saving video to database:', {
-      project_id: props.projectId,
-      video_url: videoUrl,
-      video_description: video.value.description
-    })
-
-    await dataStore.addVideo({
-      project_id: props.projectId,
-      video_url: videoUrl,
-      video_description: video.value.description
-    })
+    if (props.editingVideo) {
+      await dataStore.updateVideo(props.editingVideo.id, {
+        video_url: videoUrl,
+        video_description: video.value.description
+      })
+    } else {
+      await dataStore.addVideo({
+        project_id: props.projectId,
+        video_url: videoUrl,
+        video_description: video.value.description
+      })
+    }
     
     console.log('Video saved to database successfully')
     emit('saved')

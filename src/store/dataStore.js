@@ -158,6 +158,36 @@ export const useDataStore = defineStore('dataStore', () => {
     }
   }
 
+  async function updateLog(logId, updates) {
+    if (!loggedInUser.value) return;
+    try {
+      const { data, error } = await supabase
+        .from('logs')
+        .update({
+          title: updates.title,
+          content: updates.content,
+          links: updates.links,
+          tags: updates.tags
+        })
+        .eq('id', logId)
+        .eq('user_id', loggedInUser.value.id)
+        .select();
+        
+      if (error) throw error;
+      
+      // Update local state
+      const index = logs.value.findIndex(log => log.id === logId);
+      if (index !== -1) {
+        logs.value[index] = data[0];
+      }
+      
+      return data[0];
+    } catch (e) {
+      console.error('Error updating log:', e);
+      throw e;
+    }
+  }
+
   async function login(email, password) {
     try {
       console.log('Attempting login...')
@@ -252,6 +282,34 @@ export const useDataStore = defineStore('dataStore', () => {
     }
   }
 
+  async function updateImage(imageId, updates) {
+    if (!loggedInUser.value) return;
+    try {
+      const { data, error } = await supabase
+        .from('images')
+        .update({
+          image_url: updates.image_url,
+          image_description: updates.image_description
+        })
+        .eq('id', imageId)
+        .eq('user_id', loggedInUser.value.id)
+        .select();
+        
+      if (error) throw error;
+      
+      // Update local state
+      const index = images.value.findIndex(img => img.id === imageId);
+      if (index !== -1) {
+        images.value[index] = data[0];
+      }
+      
+      return data[0];
+    } catch (e) {
+      console.error('Error updating image:', e);
+      throw e;
+    }
+  }
+
   async function addVideo(videoData) {
     if (!loggedInUser.value) return;
     try {
@@ -309,6 +367,34 @@ export const useDataStore = defineStore('dataStore', () => {
     }
   }
 
+  async function updateVideo(videoId, updates) {
+    if (!loggedInUser.value) return;
+    try {
+      const { data, error } = await supabase
+        .from('videos')
+        .update({
+          video_url: updates.video_url,
+          video_description: updates.video_description
+        })
+        .eq('id', videoId)
+        .eq('user_id', loggedInUser.value.id)
+        .select();
+        
+      if (error) throw error;
+      
+      // Update local state
+      const index = videos.value.findIndex(vid => vid.id === videoId);
+      if (index !== -1) {
+        videos.value[index] = data[0];
+      }
+      
+      return data[0];
+    } catch (e) {
+      console.error('Error updating video:', e);
+      throw e;
+    }
+  }
+
   async function addDocument(documentData) {
     if (!loggedInUser.value) return;
     try {
@@ -353,16 +439,45 @@ export const useDataStore = defineStore('dataStore', () => {
   async function deleteDocument(documentId) {
     if (!loggedInUser.value) return;
     try {
-      console.log('Deleting document:', documentId)
       const { error } = await supabase
         .from('documents')
         .delete()
         .eq('id', documentId)
         .eq('user_id', loggedInUser.value.id);
+        
       if (error) throw error;
       documents.value = documents.value.filter(doc => doc.id !== documentId);
     } catch (e) {
       console.error('Error deleting document:', e);
+      throw e;
+    }
+  }
+
+  async function updateDocument(documentId, updates) {
+    if (!loggedInUser.value) return;
+    try {
+      const { data, error } = await supabase
+        .from('documents')
+        .update({
+          document_url: updates.document_url,
+          document_name: updates.document_name,
+          document_description: updates.document_description
+        })
+        .eq('id', documentId)
+        .eq('user_id', loggedInUser.value.id)
+        .select();
+        
+      if (error) throw error;
+      
+      // Update local state
+      const index = documents.value.findIndex(doc => doc.id === documentId);
+      if (index !== -1) {
+        documents.value[index] = data[0];
+      }
+      
+      return data[0];
+    } catch (e) {
+      console.error('Error updating document:', e);
       throw e;
     }
   }
@@ -449,18 +564,22 @@ export const useDataStore = defineStore('dataStore', () => {
     fetchLogs,
     addLog,
     deleteLog,
+    updateLog,
     login,
     logout,
     // Media Actions
     addImage,
     fetchImages,
     deleteImage,
+    updateImage,
     addVideo,
     fetchVideos,
     deleteVideo,
+    updateVideo,
     addDocument,
     fetchDocuments,
     deleteDocument,
+    updateDocument,
     // Draft Actions
     saveDraft,
     clearDraft,

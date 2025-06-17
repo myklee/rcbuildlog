@@ -82,7 +82,8 @@ import { useAuthStore } from '../store/authStore';
 const props = defineProps({
   show: Boolean,
   projectId: String,
-  project: Object
+  project: Object,
+  editingLog: Object
 });
 
 const emit = defineEmits(['close', 'saved']);
@@ -138,6 +139,22 @@ watch(() => props.show, (newVal) => {
   }
 });
 
+// Watch for editingLog changes
+watch(() => props.editingLog, (newLog) => {
+  if (newLog) {
+    title.value = newLog.title || '';
+    content.value = newLog.content || '';
+    links.value = newLog.links || [];
+    tags.value = newLog.tags || [];
+  } else {
+    // Reset form when not editing
+    title.value = '';
+    content.value = '';
+    links.value = [];
+    tags.value = [];
+  }
+}, { immediate: true });
+
 function closeModal() {
   emit('close');
 }
@@ -166,13 +183,24 @@ async function saveLog() {
   
   isSaving.value = true;
   try {
-    await store.addLog({
-      project_id: props.projectId,
-      title: title.value,
-      content: content.value,
-      links: links.value.filter(link => link.url.trim()),
-      tags: tags.value
-    });
+    if (props.editingLog) {
+      // Update existing log
+      await store.updateLog(props.editingLog.id, {
+        title: title.value,
+        content: content.value,
+        links: links.value.filter(link => link.url.trim()),
+        tags: tags.value
+      });
+    } else {
+      // Create new log
+      await store.addLog({
+        project_id: props.projectId,
+        title: title.value,
+        content: content.value,
+        links: links.value.filter(link => link.url.trim()),
+        tags: tags.value
+      });
+    }
     
     // Clear draft after successful save
     store.clearDraft();
