@@ -249,7 +249,7 @@ textarea.input-field {
 
 .save-btn {
   padding: 0.5rem 1rem;
-  background: #3b82f6;
+  background: #2563eb;
   color: white;
   border: none;
   border-radius: 4px;
@@ -257,11 +257,7 @@ textarea.input-field {
 }
 
 .save-btn:disabled {
-  background: #93c5fd;
+  opacity: 0.7;
   cursor: not-allowed;
-}
-
-.save-btn:hover:not(:disabled) {
-  background: #2563eb;
 }
 </style> 

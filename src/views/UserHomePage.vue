@@ -88,59 +88,11 @@
       </div>
 
       <!-- Create Project Modal -->
-      <div v-if="showCreateModal" class="modal-overlay">
-        <div class="modal-content">
-          <h3 class="modal-title">Create New Project</h3>
-          
-          <form @submit.prevent="createProject">
-            <div class="form-group">
-              <label class="form-label">Project Name</label>
-              <input
-                v-model="newProject.name"
-                type="text"
-                class="form-input"
-                required
-              />
-            </div>
-
-            <div class="form-group">
-              <label class="form-label">Description</label>
-              <textarea
-                v-model="newProject.description"
-                class="form-textarea"
-                rows="3"
-                required
-              ></textarea>
-            </div>
-
-            <div class="form-group">
-              <label class="form-label">Project Image (optional)</label>
-              <input
-                type="file"
-                accept="image/*"
-                @change="handleImageUpload"
-                class="form-file"
-              />
-            </div>
-
-            <div class="modal-actions">
-              <button
-                type="button"
-                @click="showCreateModal = false"
-                class="cancel-button"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                class="submit-button"
-              >
-                Create Project
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
+      <CreateProjectModal
+        :show="showCreateModal"
+        @close="showCreateModal = false"
+        @saved="handleProjectCreated"
+      />
 
       <!-- Delete Confirmation Modal -->
       <div v-if="showDeleteModal" class="modal-overlay">
@@ -151,14 +103,16 @@
             <button
               @click="showDeleteModal = false"
               class="cancel-button"
+              :disabled="isDeleting"
             >
               Cancel
             </button>
             <button
               @click="deleteProject"
               class="delete-confirm-button"
+              :disabled="isDeleting"
             >
-              Delete
+              {{ isDeleting ? 'Deleting...' : 'Delete' }}
             </button>
           </div>
         </div>
@@ -171,6 +125,7 @@
 import { computed, ref, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useDataStore } from '../store/dataStore'
+import CreateProjectModal from '../components/CreateProjectModal.vue'
 
 const dataStore = useDataStore()
 const router = useRouter()
@@ -211,6 +166,7 @@ const displayedProjects = computed(() => {
 const showCreateModal = ref(false)
 const showDeleteModal = ref(false)
 const projectToDelete = ref(null)
+const isDeleting = ref(false)
 
 const newProject = ref({
   name: '',
@@ -235,30 +191,9 @@ const toggleSortOrder = async () => {
   await dataStore.fetchProjects()
 }
 
-const handleImageUpload = (event) => {
-  const file = event.target.files[0]
-  if (file) {
-    newProject.value.imageUrl = URL.createObjectURL(file)
-  }
-}
-
-const createProject = async () => {
-  try {
-    await dataStore.addProject({
-      ...newProject.value,
-      user_id: user.value.id
-    })
-    
-    // Reset form and close modal
-    newProject.value = {
-      name: '',
-      description: '',
-      imageUrl: null
-    }
-    showCreateModal.value = false
-  } catch (error) {
-    console.error('Error creating project:', error)
-  }
+const handleProjectCreated = async () => {
+  await dataStore.fetchProjects()
+  showCreateModal.value = false
 }
 
 const confirmDelete = (project) => {
@@ -270,11 +205,15 @@ const deleteProject = async () => {
   if (!projectToDelete.value) return
   
   try {
+    isDeleting.value = true
     await dataStore.deleteProject(projectToDelete.value.id)
     showDeleteModal.value = false
     projectToDelete.value = null
   } catch (error) {
     console.error('Error deleting project:', error)
+    alert('Failed to delete project: ' + error.message)
+  } finally {
+    isDeleting.value = false
   }
 }
 
@@ -517,74 +456,66 @@ watch(() => filters.value, async () => {
   bottom: 0;
   background-color: rgba(0, 0, 0, 0.5);
   display: flex;
-  align-items: center;
   justify-content: center;
+  align-items: center;
+  z-index: 1000;
 }
 
 .modal-content {
   background: white;
-  padding: 1.5rem;
-  border-radius: 0.5rem;
+  padding: 2rem;
+  border-radius: 8px;
   width: 90%;
-  max-width: 28rem;
+  max-width: 500px;
 }
 
 .modal-title {
-  font-size: 1.25rem;
-  font-weight: 600;
-  margin-bottom: 1rem;
+  margin: 0 0 1rem;
+  color: #1f2937;
+  font-size: 1.5rem;
 }
 
-.form-group {
-  margin-bottom: 1rem;
-}
-
-.form-label {
-  display: block;
-  margin-bottom: 0.5rem;
-  color: #374151;
-}
-
-.form-input,
-.form-textarea {
-  width: 100%;
-  padding: 0.5rem;
-  border: 1px solid #ddd;
-  border-radius: 0.25rem;
-}
-
-.form-textarea {
-  resize: vertical;
+.modal-message {
+  margin: 0 0 1.5rem;
+  color: #4b5563;
 }
 
 .modal-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 0.75rem;
-  margin-top: 1.5rem;
+  gap: 1rem;
 }
 
 .cancel-button {
   padding: 0.5rem 1rem;
-  border: 1px solid #ddd;
-  border-radius: 0.25rem;
-  background: white;
+  background: #f3f4f6;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  color: #374151;
 }
 
-.submit-button {
-  background-color: #4CAF50;
-  color: white;
-  padding: 0.5rem 1rem;
-  border-radius: 0.25rem;
-  border: none;
+.cancel-button:hover:not(:disabled) {
+  background: #e5e7eb;
 }
 
 .delete-confirm-button {
-  background-color: #dc2626;
-  color: white;
   padding: 0.5rem 1rem;
-  border-radius: 0.25rem;
+  background: #ef4444;
+  color: white;
   border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.delete-confirm-button:hover:not(:disabled) {
+  background: #dc2626;
+}
+
+.delete-confirm-button:disabled,
+.cancel-button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
 }
 
 @media (max-width: 768px) {
