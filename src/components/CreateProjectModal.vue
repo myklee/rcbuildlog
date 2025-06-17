@@ -45,6 +45,17 @@
           <small class="help-text">Press Enter or comma to add a tag</small>
         </div>
 
+        <div class="form-group">
+          <label>
+            <input
+              type="checkbox"
+              v-model="project.is_private"
+            />
+            Make this project private (only visible to you)
+          </label>
+          <small class="help-text">Private projects will only be visible to you</small>
+        </div>
+
         <div class="modal-actions">
           <button type="button" @click="closeModal" class="cancel-btn">Cancel</button>
           <button type="submit" class="save-btn" :disabled="isCreating">
@@ -73,7 +84,8 @@ const isAuthenticated = computed(() => !!authStore.user)
 const project = ref({
   name: '',
   description: '',
-  tags: []
+  tags: [],
+  is_private: false
 })
 const newTag = ref('')
 const isCreating = ref(false)
@@ -82,7 +94,8 @@ const closeModal = () => {
   project.value = {
     name: '',
     description: '',
-    tags: []
+    tags: [],
+    is_private: false
   }
   newTag.value = ''
   emit('close')
@@ -213,9 +226,10 @@ textarea.input-field {
 }
 
 .help-text {
-  color: #6b7280;
-  font-size: 0.75rem;
+  display: block;
   margin-top: 0.25rem;
+  color: var(--color-gray-500);
+  font-size: 0.875rem;
 }
 
 .modal-actions {
