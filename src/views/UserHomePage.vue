@@ -4,8 +4,15 @@
       Loading your projects...
     </div>
     <template v-else-if="user">
-      <div class="header">
+      <!-- Top Header with Logout -->
+      <div class="top-header">
         <h2>Welcome, {{ user.email }}!</h2>
+        <button @click="logout" class="logout-button">
+          Logout
+        </button>
+      </div>
+
+      <div class="header">
         <button @click="showCreateModal = true" class="create-button">
           Create New Project
         </button>
@@ -153,10 +160,6 @@
           </div>
         </div>
       </div>
-
-      <button @click="logout" class="logout-button">
-        Logout
-      </button>
     </template>
   </div>
 </template>
@@ -310,14 +313,35 @@ watch(() => filters.value, async () => {
 
 <style scoped>
 .container {
-  max-width: 1200px;
-  margin: 0 auto;
   padding: 1rem;
+}
+
+.top-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--color-gray-200);
+}
+
+.logout-button {
+  background-color: var(--color-danger);
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-md);
+  border: none;
+  cursor: pointer;
+  transition: var(--transition-colors);
+}
+
+.logout-button:hover {
+  background-color: var(--color-danger-dark);
 }
 
 .header {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   align-items: center;
   margin-bottom: 1.5rem;
 }
@@ -533,15 +557,6 @@ watch(() => filters.value, async () => {
 }
 
 .delete-confirm-button {
-  background-color: #dc2626;
-  color: white;
-  padding: 0.5rem 1rem;
-  border-radius: 0.25rem;
-  border: none;
-}
-
-.logout-button {
-  margin-top: 2rem;
   background-color: #dc2626;
   color: white;
   padding: 0.5rem 1rem;

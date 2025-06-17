@@ -5,14 +5,13 @@
   </div>
   <div v-else-if="error" class="text-center py-8">
     <p class="text-red-500">{{ error }}</p>
-    <button
-      @click="$router.push('/')"
-      class="mt-4 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors"
-    >
+    <button @click="$router.push('/')"
+      class="mt-4 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors">
       Back to Projects
     </button>
   </div>
-  <div v-else-if="project" class="project-detail">
+  <div v-else-if="project" class="project-detail-container">
+    <!-- Project Header - Full Width -->
     <div class="project-header">
       <div class="project-info">
         <h1>{{ project.name }}</h1>
@@ -23,123 +22,98 @@
           </span>
         </div>
       </div>
-      <div class="project-actions" v-if="isAuthenticated">
-        <button class="edit-btn" @click="showEditModal = true">Edit Project</button>
+      <div class="header-actions">
+        <div class="add-entry-buttons" v-if="isOwner">
+          <button class="add-button" @click="showLogTextModal = true">Add Log Entry</button>
+          <button class="add-button" @click="showImageModal = true">Add Image</button>
+          <button class="add-button" @click="showVideoModal = true">Add Video</button>
+          <button class="add-button" @click="showDocumentModal = true">Add Document</button>
+        </div>
+        <button v-if="isAuthenticated" class="edit-btn" @click="showEditModal = true">Edit Project</button>
       </div>
     </div>
 
-    <div class="add-entry-buttons" v-if="isOwner">
-      <button class="add-button" @click="showLogTextModal = true">Add Log Entry</button>
-      <button class="add-button" @click="showImageModal = true">Add Image</button>
-      <button class="add-button" @click="showVideoModal = true">Add Video</button>
-      <button class="add-button" @click="showDocumentModal = true">Add Document</button>
-    </div>
+    <!-- Two Column Layout -->
+    <div class="content-wrapper">
+      <!-- Main Content -->
+      <div class="main-content">
+        <!-- Assets Grid -->
+        <div class="assets-grid">
+          <!-- Images Section -->
+          <div v-if="images.length" class="media-section">
+            <h2>Images</h2>
+            <div class="media-grid">
+              <div v-for="img in images" :key="img.id" class="media-item">
+                <img :src="img.image_url" alt="Project Image" class="media-img" />
+                <div class="media-desc">{{ img.image_description }}</div>
+                <div class="media-actions" v-if="isAuthenticated && project && project.user_id === authStore.userId">
+                  <button class="edit-btn" @click="showEditImageModal(img)">Edit</button>
+                  <button class="delete-btn" @click="confirmDeleteImage(img)">Delete</button>
+                </div>
+              </div>
+            </div>
+          </div>
 
-    <!-- Combined Log Entries -->
-    <div class="log-entries">
-      <LogItem
-        v-for="log in allLogs"
-        :key="log.id"
-        :logItem="log"
-        :project="project"
-        @edit="showEditLogModal"
-        @editImage="showEditImageModal"
-        @editVideo="showEditVideoModal"
-        @editDocument="showEditDocumentModal"
-        @delete="confirmDeleteLog"
-      />
-    </div>
+          <!-- Videos Section -->
+          <div v-if="videos.length" class="media-section">
+            <h2>Videos</h2>
+            <div class="media-grid">
+              <div v-for="vid in videos" :key="vid.id" class="media-item">
+                <video :src="vid.video_url" controls class="media-video"></video>
+                <div class="media-desc">{{ vid.video_description }}</div>
+                <div class="media-actions" v-if="isAuthenticated && project && project.user_id === authStore.userId">
+                  <button class="edit-btn" @click="showEditVideoModal(vid)">Edit</button>
+                  <button class="delete-btn" @click="confirmDeleteVideo(vid)">Delete</button>
+                </div>
+              </div>
+            </div>
+          </div>
 
-    <!-- Images Section -->
-    <div v-if="images.length" class="media-section">
-      <h2>Images</h2>
-      <div class="media-list">
-        <div v-for="img in images" :key="img.id" class="media-item">
-          <img :src="img.image_url" alt="Project Image" class="media-img" />
-          <div class="media-desc">{{ img.image_description }}</div>
-          <div class="media-actions" v-if="isAuthenticated && project && project.user_id === authStore.userId">
-            <button class="edit-btn" @click="showEditImageModal(img)">Edit</button>
-            <button class="delete-btn" @click="confirmDeleteImage(img)">Delete</button>
+          <!-- Documents Section -->
+          <div v-if="documents.length" class="media-section">
+            <h2>Documents</h2>
+            <div class="media-grid">
+              <div v-for="doc in documents" :key="doc.id" class="media-item">
+                <a :href="doc.document_url" target="_blank" class="doc-link">
+                  <span class="doc-icon">📄</span> {{ doc.document_name }}
+                </a>
+                <div class="media-desc">{{ doc.document_description }}</div>
+                <div class="media-actions" v-if="isAuthenticated && project && project.user_id === authStore.userId">
+                  <button class="edit-btn" @click="showEditDocumentModal(doc)">Edit</button>
+                  <button class="delete-btn" @click="confirmDeleteDocument(doc)">Delete</button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- Videos Section -->
-    <div v-if="videos.length" class="media-section">
-      <h2>Videos</h2>
-      <div class="media-list">
-        <div v-for="vid in videos" :key="vid.id" class="media-item">
-          <video :src="vid.video_url" controls class="media-video"></video>
-          <div class="media-desc">{{ vid.video_description }}</div>
-          <div class="media-actions" v-if="isAuthenticated && project && project.user_id === authStore.userId">
-            <button class="edit-btn" @click="showEditVideoModal(vid)">Edit</button>
-            <button class="delete-btn" @click="confirmDeleteVideo(vid)">Delete</button>
-          </div>
+      <!-- Log Aside -->
+      <aside class="log-aside">
+        <h2 class="log-aside-title">Project Log</h2>
+        <div class="log-entries">
+          <LogItem v-for="log in allLogs" :key="log.id" :logItem="log" :project="project" @edit="showEditLogModal"
+            @editImage="showEditImageModal" @editVideo="showEditVideoModal" @editDocument="showEditDocumentModal"
+            @delete="confirmDeleteLog" />
         </div>
-      </div>
+      </aside>
     </div>
 
-    <!-- Documents Section -->
-    <div v-if="documents.length" class="media-section">
-      <h2>Documents</h2>
-      <div class="media-list">
-        <div v-for="doc in documents" :key="doc.id" class="media-item">
-          <a :href="doc.document_url" target="_blank" class="doc-link">
-            <span class="doc-icon">📄</span> {{ doc.document_name }}
-          </a>
-          <div class="media-desc">{{ doc.document_description }}</div>
-          <div class="media-actions" v-if="isAuthenticated && project && project.user_id === authStore.userId">
-            <button class="delete-btn" @click="confirmDeleteDocument(doc)">Delete</button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Modals: Only show if authenticated -->
-    <LogTextModal
-      v-if="isOwner"
-      :show="showLogTextModal"
-      :projectId="projectId"
-      :project="project"
-      :editingLog="editingLog"
-      @close="() => { showLogTextModal = false; editingLog = null; }"
-      @saved="handleLogSaved"
-    />
-    <ImageUploadModal
-      v-if="isOwner"
-      :show="showImageModal"
-      :projectId="projectId"
-      :project="project"
-      :editingImage="editingImage"
-      @close="() => { showImageModal = false; editingImage = null; }"
-      @saved="handleImageSaved"
-    />
-    <VideoUploadModal
-      v-if="isOwner"
-      :show="showVideoModal"
-      :projectId="projectId"
-      :project="project"
-      :editingVideo="editingVideo"
-      @close="() => { showVideoModal = false; editingVideo = null; }"
-      @saved="handleVideoSaved"
-    />
-    <DocumentUploadModal
-      v-if="isOwner"
-      :show="showDocumentModal"
-      :projectId="projectId"
-      :project="project"
-      :editingDocument="editingDocument"
-      @close="() => { showDocumentModal = false; editingDocument = null; }"
-      @saved="handleDocumentSaved"
-    />
-    <EditProjectModal
-      v-if="isOwner && showEditModal"
-      :show="showEditModal"
-      :project="project"
-      @close="showEditModal = false"
-      @saved="handleProjectUpdated"
-    />
+    <!-- Modals -->
+    <LogTextModal v-if="isOwner" :show="showLogTextModal" :projectId="projectId" :project="project"
+      :editingLog="editingLog" @close="() => { showLogTextModal = false; editingLog = null; }"
+      @saved="handleLogSaved" />
+    <ImageUploadModal v-if="isOwner" :show="showImageModal" :projectId="projectId" :project="project"
+      :editingImage="editingImage" @close="() => { showImageModal = false; editingImage = null; }"
+      @saved="handleImageSaved" />
+    <VideoUploadModal v-if="isOwner" :show="showVideoModal" :projectId="projectId" :project="project"
+      :editingVideo="editingVideo" @close="() => { showVideoModal = false; editingVideo = null; }"
+      @saved="handleVideoSaved" />
+    <DocumentUploadModal v-if="isOwner" :show="showDocumentModal" :projectId="projectId" :project="project"
+      :editingDocument="editingDocument" @close="() => { showDocumentModal = false; editingDocument = null; }"
+      @saved="handleDocumentSaved" />
+    <EditProjectModal v-if="isOwner && showEditModal" :show="showEditModal" :project="project"
+      @close="showEditModal = false" @saved="handleProjectUpdated" />
   </div>
 </template>
 
@@ -343,9 +317,9 @@ const confirmDeleteLog = async (log) => {
         .from('logs')
         .delete()
         .eq('id', log.id)
-      
+
       if (error) throw error
-      
+
       // Remove from allLogs
       allLogs.value = allLogs.value.filter(l => l.id !== log.id)
     } catch (error) {
@@ -362,9 +336,9 @@ const confirmDeleteImage = async (image) => {
         .from('images')
         .delete()
         .eq('id', image.id)
-      
+
       if (error) throw error
-      
+
       // Remove from images and allLogs
       images.value = images.value.filter(img => img.id !== image.id)
       allLogs.value = allLogs.value.filter(log => log.id !== image.id)
@@ -382,9 +356,9 @@ const confirmDeleteVideo = async (video) => {
         .from('videos')
         .delete()
         .eq('id', video.id)
-      
+
       if (error) throw error
-      
+
       // Remove from videos and allLogs
       videos.value = videos.value.filter(vid => vid.id !== video.id)
       allLogs.value = allLogs.value.filter(log => log.id !== video.id)
@@ -402,9 +376,9 @@ const confirmDeleteDocument = async (document) => {
         .from('documents')
         .delete()
         .eq('id', document.id)
-      
+
       if (error) throw error
-      
+
       // Remove from documents and allLogs
       documents.value = documents.value.filter(doc => doc.id !== document.id)
       allLogs.value = allLogs.value.filter(log => log.id !== document.id)
@@ -417,145 +391,197 @@ const confirmDeleteDocument = async (document) => {
 </script>
 
 <style scoped>
-.project-detail {
-  max-width: 800px;
-  margin: 0 auto;
-  padding: 2rem;
+.project-detail-container {
+  padding: 1rem;
+  min-height: 100vh;
 }
 
 .project-header {
+  margin-bottom: 2rem;
+  padding-bottom: 2rem;
+  border-bottom: 1px solid #e5e7eb;
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 2rem;
-  padding-bottom: 1rem;
-  border-bottom: 1px solid #e5e7eb;
+  gap: 2rem;
 }
 
 .project-info {
   flex: 1;
 }
 
-.project-actions {
-  margin-left: 1rem;
-}
-
-.project-header h1 {
-  font-size: 2rem;
-  font-weight: bold;
-  margin-bottom: 0.5rem;
-}
-
-.description {
-  color: #666;
-  font-size: 1.1rem;
+.header-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  align-items: flex-end;
 }
 
 .add-entry-buttons {
   display: flex;
-  gap: 1rem;
-  margin-bottom: 2rem;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .add-button {
-  padding: 0.75rem 1.5rem;
-  background-color: #3b82f6;
+  background: #3b82f6;
   color: white;
-  border: none;
-  border-radius: 0.5rem;
-  font-size: 1rem;
-  cursor: pointer;
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+  font-weight: 500;
   transition: background-color 0.2s;
+  font-size: 0.875rem;
+  white-space: nowrap;
 }
 
 .add-button:hover {
-  background-color: #2563eb;
-}
-
-.log-entries {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-}
-
-.media-section {
-  margin-top: 2rem;
-}
-
-.media-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 2rem;
-}
-
-.media-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  max-width: 320px;
-}
-
-.media-img {
-  max-width: 300px;
-  max-height: 200px;
-  border-radius: 8px;
-  margin-bottom: 0.5rem;
-}
-
-.media-video {
-  max-width: 300px;
-  border-radius: 8px;
-  margin-bottom: 0.5rem;
-}
-
-.media-desc {
-  font-size: 0.95rem;
-  color: #444;
-  margin-top: 0.25rem;
-  text-align: center;
-}
-
-.media-actions {
-  display: flex;
-  gap: 0.5rem;
-  margin-top: 0.5rem;
-}
-
-.edit-btn, .delete-btn {
-  padding: 0.5rem 1rem;
-  border: none;
-  border-radius: 0.25rem;
-  font-size: 0.875rem;
-  cursor: pointer;
-  transition: background-color 0.2s;
+  background: #2563eb;
 }
 
 .edit-btn {
-  background-color: #3b82f6;
+  background: #4b5563;
   color: white;
-}
-
-.delete-btn {
-  background-color: #ef4444;
-  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+  font-weight: 500;
+  transition: background-color 0.2s;
+  font-size: 0.875rem;
 }
 
 .edit-btn:hover {
-  background-color: #2563eb;
+  background: #374151;
 }
 
-.delete-btn:hover {
-  background-color: #dc2626;
+.content-wrapper {
+  display: flex;
+  gap: 2rem;
+}
+
+.main-content {
+  flex: 1;
+  min-width: 0;
+  /* Prevents flex item from overflowing */
+}
+
+.log-aside {
+  width: 30vw;
+  min-width: 300px;
+  max-width: 500px;
+  border-left: 1px solid #e5e7eb;
+  padding-left: 2rem;
+  overflow-y: auto;
+  height: calc(100vh - 12rem);
+  /* Adjusted for header height */
+  position: sticky;
+  top: 2rem;
+}
+
+.log-aside-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 1.5rem;
+  color: #1f2937;
+}
+
+.project-info h1 {
+  font-size: 2rem;
+  font-weight: bold;
+  margin-bottom: 1rem;
+}
+
+.description {
+  color: #4b5563;
+  margin-bottom: 1rem;
+  font-size: 1.1rem;
+  line-height: 1.5;
+}
+
+.tags-list {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.tag {
+  background: #e5e7eb;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.875rem;
+}
+
+.assets-grid {
+  display: grid;
+  gap: 2rem;
+}
+
+.media-section {
+  background: white;
+  border-radius: 0.5rem;
+  padding: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.media-section h2 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  color: #1f2937;
+}
+
+.media-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 1rem;
+}
+
+.media-item {
+  background: #f9fafb;
+  border-radius: 0.375rem;
+  overflow: hidden;
+  position: relative;
+}
+
+.media-img {
+  width: 100%;
+  height: 200px;
+  object-fit: cover;
+}
+
+.media-video {
+  width: 100%;
+  height: 200px;
+  object-fit: cover;
+}
+
+.media-desc {
+  padding: 0.75rem;
+  font-size: 0.875rem;
+  color: #4b5563;
+}
+
+.media-actions {
+  padding: 0.75rem;
+  display: flex;
+  gap: 0.5rem;
+  border-top: 1px solid #e5e7eb;
+}
+
+.delete-btn {
+  background: #ef4444;
+  color: white;
+  padding: 0.25rem 0.75rem;
+  border-radius: 0.25rem;
+  font-size: 0.875rem;
 }
 
 .doc-link {
-  font-size: 1.1rem;
-  color: #2563eb;
-  text-decoration: none;
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  margin-bottom: 0.25rem;
+  padding: 0.75rem;
+  color: #3b82f6;
+  text-decoration: none;
 }
 
 .doc-link:hover {
@@ -563,35 +589,12 @@ const confirmDeleteDocument = async (document) => {
 }
 
 .doc-icon {
-  font-size: 1.5rem;
+  font-size: 1.25rem;
 }
 
-.edit-btn {
-  padding: 0.5rem 1rem;
-  background: #3b82f6;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 0.875rem;
-}
-
-.edit-btn:hover {
-  background: #2563eb;
-}
-
-.tags-list {
+.log-entries {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-top: 0.5rem;
-}
-
-.tag {
-  background: #e5e7eb;
-  color: #374151;
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
-  font-size: 0.875rem;
+  flex-direction: column;
+  gap: 1rem;
 }
 </style>
