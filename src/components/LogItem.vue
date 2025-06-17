@@ -80,10 +80,17 @@ const emit = defineEmits(['edit', 'delete'])
 const authStore = useAuthStore()
 
 const canEditOrDelete = computed(() => {
+  console.log('LogItem auth check:', {
+    isAuthenticated: authStore.isAuthenticated,
+    userId: authStore.userId,
+    hasProject: !!props.project,
+    projectUserId: props.project?.user_id,
+    project: props.project
+  })
   return (
-    authStore.user &&
+    authStore.isAuthenticated &&
     props.project &&
-    props.project.user_id === authStore.user.id
+    props.project.user_id === authStore.userId
   )
 })
 
