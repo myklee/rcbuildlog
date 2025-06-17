@@ -65,10 +65,13 @@
             </div>
           </div>
           <div class="project-header">
-            <router-link :to="`/project/${project.id}`" 
-                        class="project-title">
-              {{ project.name }}
-            </router-link>
+            <div class="project-title-container">
+              <router-link :to="`/project/${project.id}`" 
+                          class="project-title">
+                {{ project.name }}
+              </router-link>
+              <span v-if="project.is_private" class="private-label">Private</span>
+            </div>
             <button
               @click="confirmDelete(project)"
               class="delete-button"
@@ -448,6 +451,25 @@ watch(() => filters.value, async () => {
   justify-content: space-between;
   align-items: flex-start;
   margin-bottom: 0.5rem;
+  gap: 0.5rem;
+}
+
+.project-title-container {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1;
+}
+
+.private-label {
+  background-color: var(--color-gray-200);
+  color: var(--color-gray-700);
+  padding: 0.25rem 0.5rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
 }
 
 .project-title {
@@ -455,6 +477,7 @@ watch(() => filters.value, async () => {
   font-weight: 500;
   color: inherit;
   text-decoration: none;
+  flex: 1;
 }
 
 .project-title:hover {

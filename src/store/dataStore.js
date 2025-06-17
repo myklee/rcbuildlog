@@ -501,7 +501,8 @@ export const useDataStore = defineStore('dataStore', () => {
         .update({
           name: project.name,
           description: project.description,
-          tags: project.tags || []
+          tags: project.tags || [],
+          is_private: project.is_private || false
         })
         .eq('id', project.id)
         .eq('user_id', loggedInUser.value.id)
@@ -532,6 +533,7 @@ export const useDataStore = defineStore('dataStore', () => {
           name: project.name,
           description: project.description,
           tags: project.tags || [],
+          is_private: project.is_private || false,
           user_id: loggedInUser.value.id
         }])
         .select();
