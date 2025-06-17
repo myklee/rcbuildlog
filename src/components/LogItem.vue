@@ -76,7 +76,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['edit', 'delete'])
+const emit = defineEmits(['edit', 'delete', 'editImage', 'editVideo', 'editDocument'])
 const authStore = useAuthStore()
 
 const canEditOrDelete = computed(() => {
@@ -105,7 +105,16 @@ const formatDate = (date) => {
 }
 
 const editLog = () => {
-  emit('edit', props.logItem)
+  const logItem = props.logItem
+  if (logItem.type === 'text') {
+    emit('edit', logItem)
+  } else if (logItem.type === 'image') {
+    emit('editImage', logItem)
+  } else if (logItem.type === 'video') {
+    emit('editVideo', logItem)
+  } else if (logItem.type === 'document') {
+    emit('editDocument', logItem)
+  }
 }
 
 const deleteLog = () => {

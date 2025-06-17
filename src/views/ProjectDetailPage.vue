@@ -43,6 +43,9 @@
         :logItem="log"
         :project="project"
         @edit="showEditLogModal"
+        @editImage="showEditImageModal"
+        @editVideo="showEditVideoModal"
+        @editDocument="showEditDocumentModal"
         @delete="confirmDeleteLog"
       />
     </div>
@@ -99,7 +102,8 @@
       :show="showLogTextModal"
       :projectId="projectId"
       :project="project"
-      @close="showLogTextModal = false"
+      :editingLog="editingLog"
+      @close="() => { showLogTextModal = false; editingLog = null; }"
       @saved="handleLogSaved"
     />
     <ImageUploadModal
@@ -107,7 +111,8 @@
       :show="showImageModal"
       :projectId="projectId"
       :project="project"
-      @close="showImageModal = false"
+      :editingImage="editingImage"
+      @close="() => { showImageModal = false; editingImage = null; }"
       @saved="handleImageSaved"
     />
     <VideoUploadModal
@@ -115,7 +120,8 @@
       :show="showVideoModal"
       :projectId="projectId"
       :project="project"
-      @close="showVideoModal = false"
+      :editingVideo="editingVideo"
+      @close="() => { showVideoModal = false; editingVideo = null; }"
       @saved="handleVideoSaved"
     />
     <DocumentUploadModal
@@ -123,7 +129,8 @@
       :show="showDocumentModal"
       :projectId="projectId"
       :project="project"
-      @close="showDocumentModal = false"
+      :editingDocument="editingDocument"
+      @close="() => { showDocumentModal = false; editingDocument = null; }"
       @saved="handleDocumentSaved"
     />
     <EditProjectModal
@@ -182,6 +189,9 @@ const showImageModal = ref(false)
 const showVideoModal = ref(false)
 const showDocumentModal = ref(false)
 const editingLog = ref(null)
+const editingImage = ref(null)
+const editingVideo = ref(null)
+const editingDocument = ref(null)
 const showEditModal = ref(false)
 
 // Handlers
@@ -311,6 +321,21 @@ const showEditLogModal = (log) => {
   showLogTextModal.value = true
 }
 
+const showEditImageModal = (image) => {
+  editingImage.value = image
+  showImageModal.value = true
+}
+
+const showEditVideoModal = (video) => {
+  editingVideo.value = video
+  showVideoModal.value = true
+}
+
+const showEditDocumentModal = (document) => {
+  editingDocument.value = document
+  showDocumentModal.value = true
+}
+
 const confirmDeleteLog = async (log) => {
   if (confirm('Are you sure you want to delete this log entry?')) {
     try {
@@ -328,10 +353,6 @@ const confirmDeleteLog = async (log) => {
       alert('Failed to delete log entry')
     }
   }
-}
-
-const showEditImageModal = (img) => {
-  // Implement if you want to support editing images
 }
 
 const confirmDeleteImage = async (image) => {
@@ -352,10 +373,6 @@ const confirmDeleteImage = async (image) => {
       alert('Failed to delete image')
     }
   }
-}
-
-const showEditVideoModal = (vid) => {
-  // Implement if you want to support editing videos
 }
 
 const confirmDeleteVideo = async (video) => {

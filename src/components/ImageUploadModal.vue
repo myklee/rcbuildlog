@@ -33,7 +33,7 @@
         </div>
         <div class="modal-actions">
           <button type="button" @click="closeModal" class="cancel-btn">Cancel</button>
-          <button type="submit" class="save-btn" :disabled="!image.file || isUploading">
+          <button type="submit" class="save-btn" :disabled="(!image.file && !props.editingImage) || isUploading">
             {{ isUploading ? 'Uploading...' : 'Save Image' }}
           </button>
         </div>
@@ -43,7 +43,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useDataStore } from '../store/dataStore'
 import { supabase } from '../lib/supabase'
 import { useAuthStore } from '../store/authStore'
@@ -51,7 +51,8 @@ import { useAuthStore } from '../store/authStore'
 const props = defineProps({
   show: Boolean,
   projectId: String,
-  project: Object
+  project: Object,
+  editingImage: Object
 })
 const emit = defineEmits(['close', 'saved'])
 const dataStore = useDataStore()
@@ -62,15 +63,28 @@ const isOwner = computed(() => isAuthenticated.value && props.project && props.p
 const image = ref({ file: null, url: '', description: '' })
 const isUploading = ref(false)
 
+const resetForm = () => {
+  image.value = { file: null, url: '', description: '' }
+  isUploading.value = false
+}
+
 const closeModal = () => {
   emit('close')
   resetForm()
 }
 
-const resetForm = () => {
-  image.value = { file: null, url: '', description: '' }
-  isUploading.value = false
-}
+// Watch for editingImage changes
+watch(() => props.editingImage, (newImage) => {
+  if (newImage) {
+    image.value = {
+      file: null,
+      url: newImage.image_url,
+      description: newImage.image_description || ''
+    }
+  } else {
+    resetForm()
+  }
+}, { immediate: true })
 
 const handleImageUpload = (event) => {
   const file = event.target.files[0]
@@ -112,7 +126,7 @@ const uploadToStorage = async (file) => {
 }
 
 const saveImage = async () => {
-  if (!image.value.file) {
+  if (!image.value.file && !props.editingImage) {
     alert('Please select an image.')
     return
   }
@@ -121,14 +135,24 @@ const saveImage = async () => {
     isUploading.value = true
     console.log('Uploading image to storage...')
     
-    const imageUrl = await uploadToStorage(image.value.file)
-    console.log('Image uploaded to storage:', imageUrl)
+    let imageUrl = image.value.url
+    if (image.value.file) {
+      imageUrl = await uploadToStorage(image.value.file)
+      console.log('Image uploaded to storage:', imageUrl)
+    }
 
-    await dataStore.addImage({
-      project_id: props.projectId,
-      image_url: imageUrl,
-      image_description: image.value.description
-    })
+    if (props.editingImage) {
+      await dataStore.updateImage(props.editingImage.id, {
+        image_url: imageUrl,
+        image_description: image.value.description
+      })
+    } else {
+      await dataStore.addImage({
+        project_id: props.projectId,
+        image_url: imageUrl,
+        image_description: image.value.description
+      })
+    }
     
     console.log('Image saved to database')
     emit('saved')

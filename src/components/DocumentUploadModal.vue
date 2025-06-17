@@ -42,7 +42,7 @@
         </div>
         <div class="modal-actions">
           <button type="button" @click="closeModal" class="cancel-btn">Cancel</button>
-          <button type="submit" class="save-btn" :disabled="!document.file || isUploading">
+          <button type="submit" class="save-btn" :disabled="(!document.file && !props.editingDocument) || isUploading">
             {{ isUploading ? 'Uploading...' : 'Save Document' }}
           </button>
         </div>
@@ -52,7 +52,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useDataStore } from '../store/dataStore'
 import { supabase } from '../lib/supabase'
 import { useAuthStore } from '../store/authStore'
@@ -60,7 +60,8 @@ import { useAuthStore } from '../store/authStore'
 const props = defineProps({
   show: Boolean,
   projectId: String,
-  project: Object
+  project: Object,
+  editingDocument: Object
 })
 const emit = defineEmits(['close', 'saved'])
 const dataStore = useDataStore()
@@ -71,15 +72,29 @@ const isOwner = computed(() => isAuthenticated.value && props.project && props.p
 const document = ref({ file: null, url: '', name: '', description: '' })
 const isUploading = ref(false)
 
+const resetForm = () => {
+  document.value = { file: null, url: '', name: '', description: '' }
+  isUploading.value = false
+}
+
 const closeModal = () => {
   emit('close')
   resetForm()
 }
 
-const resetForm = () => {
-  document.value = { file: null, url: '', name: '', description: '' }
-  isUploading.value = false
-}
+// Watch for editingDocument changes
+watch(() => props.editingDocument, (newDoc) => {
+  if (newDoc) {
+    document.value = {
+      file: null,
+      url: newDoc.document_url,
+      name: newDoc.document_name || '',
+      description: newDoc.document_description || ''
+    }
+  } else {
+    resetForm()
+  }
+}, { immediate: true })
 
 const handleDocumentUpload = (event) => {
   const file = event.target.files[0]
@@ -116,20 +131,32 @@ const uploadToStorage = async (file) => {
 }
 
 const saveDocument = async () => {
-  if (!document.value.file) {
+  if (!document.value.file && !props.editingDocument) {
     alert('Please select a document.')
     return
   }
 
   try {
     isUploading.value = true
-    const docUrl = await uploadToStorage(document.value.file)
-    await dataStore.addDocument({
-      project_id: props.projectId,
-      document_url: docUrl,
-      document_name: document.value.name,
-      document_description: document.value.description
-    })
+    let docUrl = document.value.url
+    if (document.value.file) {
+      docUrl = await uploadToStorage(document.value.file)
+    }
+
+    if (props.editingDocument) {
+      await dataStore.updateDocument(props.editingDocument.id, {
+        document_url: docUrl,
+        document_name: document.value.name,
+        document_description: document.value.description
+      })
+    } else {
+      await dataStore.addDocument({
+        project_id: props.projectId,
+        document_url: docUrl,
+        document_name: document.value.name,
+        document_description: document.value.description
+      })
+    }
     emit('saved')
     closeModal()
   } catch (error) {
