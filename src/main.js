@@ -6,6 +6,8 @@ import { createPinia } from "pinia";
 import piniaPluginPersistedstate from "pinia-plugin-persistedstate";
 import { useDataStore } from "./store/dataStore";
 import { useAuthStore } from "./store/authStore";
+import './assets/reset.css'
+import './assets/main.css'
 
 const app = createApp(App);
 const pinia = createPinia();
