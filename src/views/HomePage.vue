@@ -73,6 +73,7 @@ const loadRandomProject = async () => {
     const { data: projects, error } = await supabase
       .from('projects')
       .select('*')
+      .eq('is_private', false)
       .order('created_at', { ascending: false })
       .limit(10)
 
