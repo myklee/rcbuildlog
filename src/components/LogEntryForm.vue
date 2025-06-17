@@ -1,5 +1,5 @@
 <template>
-  <div v-if="show" class="modal-overlay" @click.self="closeModal">
+  <div v-if="isOwner && show" class="modal-overlay" @click.self="closeModal">
     <div class="modal-content">
       <h3>{{ editingLog ? 'Edit Log Entry' : 'Add New Log Entry' }}</h3>
       <form @submit.prevent="saveLogEntry">
@@ -60,8 +60,9 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, computed } from 'vue'
 import { useDataStore } from '../store/dataStore'
+import { useAuthStore } from '../store/authStore'
 import ImageUploadForm from './log-forms/ImageUploadForm.vue'
 import VideoUploadForm from './log-forms/VideoUploadForm.vue'
 
@@ -77,12 +78,15 @@ const props = defineProps({
   editingLog: {
     type: Object,
     default: null
-  }
+  },
+  project: Object
 })
 
 const emit = defineEmits(['close', 'saved'])
-
 const dataStore = useDataStore()
+const authStore = useAuthStore()
+const isAuthenticated = computed(() => !!authStore.user)
+const isOwner = computed(() => isAuthenticated.value && props.project && props.project.user_id === authStore.user.id)
 
 // Form state
 const newLogNotes = ref('')

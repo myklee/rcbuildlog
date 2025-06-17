@@ -1,5 +1,5 @@
 <template>
-  <div v-if="show" class="modal-overlay" @click="closeModal">
+  <div v-if="isOwner && show" class="modal-overlay" @click="closeModal">
     <div class="modal-content" @click.stop>
       <h2 class="text-xl font-bold mb-4">Add Log Entry</h2>
       
@@ -74,143 +74,123 @@
   </div>
 </template>
 
-<script>
-import { ref, onMounted, onUnmounted, watch } from 'vue';
+<script setup>
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useDataStore } from '../store/dataStore';
+import { useAuthStore } from '../store/authStore';
 
-export default {
-  name: 'LogTextModal',
-  props: {
-    show: {
-      type: Boolean,
-      required: true
-    },
-    projectId: {
-      type: String,
-      required: true
-    }
-  },
-  emits: ['close', 'saved'],
-  setup(props, { emit }) {
-    const store = useDataStore();
-    const title = ref('');
-    const content = ref('');
-    const links = ref([]);
-    const tags = ref([]);
-    const newLink = ref('');
-    const newTag = ref('');
-    const isSaving = ref(false);
+const props = defineProps({
+  show: Boolean,
+  projectId: String,
+  project: Object
+});
 
-    // Auto-save draft every 2 seconds
-    let autoSaveInterval;
+const emit = defineEmits(['close', 'saved']);
+const store = useDataStore();
+const authStore = useAuthStore();
+const isAuthenticated = computed(() => !!authStore.user);
+const isOwner = computed(() => isAuthenticated.value && props.project && props.project.user_id === authStore.user.id);
 
-    onMounted(() => {
-      // Restore draft if exists
-      if (store.currentDraft) {
-        title.value = store.currentDraft.title || '';
-        content.value = store.currentDraft.content || '';
-        links.value = store.currentDraft.links || [];
-        tags.value = store.currentDraft.tags || [];
-      }
+const title = ref('');
+const content = ref('');
+const links = ref([]);
+const tags = ref([]);
+const newLink = ref('');
+const newTag = ref('');
+const isSaving = ref(false);
 
-      // Start auto-save
-      autoSaveInterval = setInterval(() => {
-        if (title.value || content.value || links.value.length > 0 || tags.value.length > 0) {
-          store.saveDraft({
-            title: title.value,
-            content: content.value,
-            links: links.value,
-            tags: tags.value
-          });
-        }
-      }, 2000);
-    });
+// Auto-save draft every 2 seconds
+let autoSaveInterval;
 
-    // Clean up auto-save on unmount
-    onUnmounted(() => {
-      if (autoSaveInterval) {
-        clearInterval(autoSaveInterval);
-      }
-    });
-
-    // Watch for modal close to clear draft
-    watch(() => props.show, (newVal) => {
-      if (!newVal) {
-        store.clearDraft();
-      }
-    });
-
-    function closeModal() {
-      emit('close');
-    }
-
-    function addLink() {
-      links.value.push({ url: '' });
-    }
-
-    function removeLink(index) {
-      links.value.splice(index, 1);
-    }
-
-    function addTag() {
-      if (newTag.value.trim()) {
-        tags.value.push(newTag.value.trim());
-        newTag.value = '';
-      }
-    }
-
-    function removeTag(index) {
-      tags.value.splice(index, 1);
-    }
-
-    async function saveLog() {
-      if (!title.value || !content.value) return;
-      
-      isSaving.value = true;
-      try {
-        await store.addLog({
-          project_id: props.projectId,
-          title: title.value,
-          content: content.value,
-          links: links.value.filter(link => link.url.trim()),
-          tags: tags.value
-        });
-        
-        // Clear draft after successful save
-        store.clearDraft();
-        
-        // Reset form
-        title.value = '';
-        content.value = '';
-        links.value = [];
-        tags.value = [];
-        
-        emit('saved');
-        emit('close');
-      } catch (error) {
-        console.error('Error saving log:', error);
-      } finally {
-        isSaving.value = false;
-      }
-    }
-
-    return {
-      title,
-      content,
-      links,
-      tags,
-      newLink,
-      newTag,
-      isSaving,
-      closeModal,
-      addLink,
-      removeLink,
-      addTag,
-      removeTag,
-      saveLog
-    };
+onMounted(() => {
+  // Restore draft if exists
+  if (store.currentDraft) {
+    title.value = store.currentDraft.title || '';
+    content.value = store.currentDraft.content || '';
+    links.value = store.currentDraft.links || [];
+    tags.value = store.currentDraft.tags || [];
   }
-};
+
+  // Start auto-save
+  autoSaveInterval = setInterval(() => {
+    if (title.value || content.value || links.value.length > 0 || tags.value.length > 0) {
+      store.saveDraft({
+        title: title.value,
+        content: content.value,
+        links: links.value,
+        tags: tags.value
+      });
+    }
+  }, 2000);
+});
+
+// Clean up auto-save on unmount
+onUnmounted(() => {
+  if (autoSaveInterval) {
+    clearInterval(autoSaveInterval);
+  }
+});
+
+// Watch for modal close to clear draft
+watch(() => props.show, (newVal) => {
+  if (!newVal) {
+    store.clearDraft();
+  }
+});
+
+function closeModal() {
+  emit('close');
+}
+
+function addLink() {
+  links.value.push({ url: '' });
+}
+
+function removeLink(index) {
+  links.value.splice(index, 1);
+}
+
+function addTag() {
+  if (newTag.value.trim()) {
+    tags.value.push(newTag.value.trim());
+    newTag.value = '';
+  }
+}
+
+function removeTag(index) {
+  tags.value.splice(index, 1);
+}
+
+async function saveLog() {
+  if (!title.value || !content.value) return;
+  
+  isSaving.value = true;
+  try {
+    await store.addLog({
+      project_id: props.projectId,
+      title: title.value,
+      content: content.value,
+      links: links.value.filter(link => link.url.trim()),
+      tags: tags.value
+    });
+    
+    // Clear draft after successful save
+    store.clearDraft();
+    
+    // Reset form
+    title.value = '';
+    content.value = '';
+    links.value = [];
+    tags.value = [];
+    
+    emit('saved');
+    emit('close');
+  } catch (error) {
+    console.error('Error saving log:', error);
+  } finally {
+    isSaving.value = false;
+  }
+}
 </script>
 
 <style scoped>

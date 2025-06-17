@@ -53,7 +53,7 @@
       </div>
 
       <!-- Actions -->
-      <div class="log-actions">
+      <div class="log-actions" v-if="canEditOrDelete">
         <button @click="editLog" class="edit-button">Edit</button>
         <button @click="deleteLog" class="delete-button">Delete</button>
       </div>
@@ -62,16 +62,30 @@
 </template>
 
 <script setup>
-import { defineProps, defineEmits } from 'vue'
+import { defineProps, defineEmits, computed } from 'vue'
+import { useAuthStore } from '../store/authStore'
 
 const props = defineProps({
   logItem: {
     type: Object,
     required: true
+  },
+  project: {
+    type: Object,
+    required: false
   }
 })
 
 const emit = defineEmits(['edit', 'delete'])
+const authStore = useAuthStore()
+
+const canEditOrDelete = computed(() => {
+  return (
+    authStore.user &&
+    props.project &&
+    props.project.user_id === authStore.user.id
+  )
+})
 
 const formatDate = (date) => {
   return new Date(date).toLocaleDateString('en-US', {

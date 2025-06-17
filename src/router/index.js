@@ -8,13 +8,14 @@ import ProjectDetailPage from '../views/ProjectDetailPage.vue';
 import SignUp from '../views/SignUp.vue';
 import HomePage from '../views/HomePage.vue';
 import { useDataStore } from '../store/dataStore';
+import { useAuthStore } from '../store/authStore';
 
 const routes = [
   { path: '/', component: HomePage },
   { path: '/login', component: Login },
   { path: '/signup', component: SignUp },
   { path: '/user-home', component: UserHomePage, meta: { requiresAuth: true } },
-  { path: '/project/:id', component: ProjectDetailPage, meta: { requiresAuth: true } },
+  { path: '/project/:id', component: ProjectDetailPage },
 ];
 
 const router = createRouter({
@@ -25,6 +26,7 @@ const router = createRouter({
 // Navigation guard
 router.beforeEach((to, from, next) => {
   const dataStore = useDataStore();
+  const authStore = useAuthStore();
   
   // Check if route requires auth
   if (to.meta.requiresAuth && !dataStore.loggedInUser) {
