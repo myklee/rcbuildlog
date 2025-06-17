@@ -28,7 +28,7 @@
       </div>
     </div>
 
-    <div class="add-entry-buttons" v-if="isAuthenticated">
+    <div class="add-entry-buttons" v-if="isOwner">
       <button class="add-button" @click="showLogTextModal = true">Add Log Entry</button>
       <button class="add-button" @click="showImageModal = true">Add Image</button>
       <button class="add-button" @click="showVideoModal = true">Add Video</button>
@@ -42,7 +42,8 @@
         :key="log.id"
         :logItem="log"
         :project="project"
-        v-bind="isAuthenticated ? { onEdit: showEditLogModal, onDelete: confirmDeleteLog } : {}"
+        @edit="showEditLogModal"
+        @delete="confirmDeleteLog"
       />
     </div>
 
@@ -53,7 +54,7 @@
         <div v-for="img in images" :key="img.id" class="media-item">
           <img :src="img.image_url" alt="Project Image" class="media-img" />
           <div class="media-desc">{{ img.image_description }}</div>
-          <div class="media-actions" v-if="isAuthenticated && project && project.user_id === authStore.user.id">
+          <div class="media-actions" v-if="isAuthenticated && project && project.user_id === authStore.userId">
             <button class="edit-btn" @click="showEditImageModal(img)">Edit</button>
             <button class="delete-btn" @click="confirmDeleteImage(img)">Delete</button>
           </div>
@@ -68,7 +69,7 @@
         <div v-for="vid in videos" :key="vid.id" class="media-item">
           <video :src="vid.video_url" controls class="media-video"></video>
           <div class="media-desc">{{ vid.video_description }}</div>
-          <div class="media-actions" v-if="isAuthenticated && project && project.user_id === authStore.user.id">
+          <div class="media-actions" v-if="isAuthenticated && project && project.user_id === authStore.userId">
             <button class="edit-btn" @click="showEditVideoModal(vid)">Edit</button>
             <button class="delete-btn" @click="confirmDeleteVideo(vid)">Delete</button>
           </div>
@@ -85,7 +86,7 @@
             <span class="doc-icon">📄</span> {{ doc.document_name }}
           </a>
           <div class="media-desc">{{ doc.document_description }}</div>
-          <div class="media-actions" v-if="isAuthenticated && project && project.user_id === authStore.user.id">
+          <div class="media-actions" v-if="isAuthenticated && project && project.user_id === authStore.userId">
             <button class="delete-btn" @click="confirmDeleteDocument(doc)">Delete</button>
           </div>
         </div>
@@ -94,35 +95,39 @@
 
     <!-- Modals: Only show if authenticated -->
     <LogTextModal
-      v-if="isAuthenticated"
+      v-if="isOwner"
       :show="showLogTextModal"
       :projectId="projectId"
+      :project="project"
       @close="showLogTextModal = false"
       @saved="handleLogSaved"
     />
     <ImageUploadModal
-      v-if="isAuthenticated"
+      v-if="isOwner"
       :show="showImageModal"
       :projectId="projectId"
+      :project="project"
       @close="showImageModal = false"
       @saved="handleImageSaved"
     />
     <VideoUploadModal
-      v-if="isAuthenticated"
+      v-if="isOwner"
       :show="showVideoModal"
       :projectId="projectId"
+      :project="project"
       @close="showVideoModal = false"
       @saved="handleVideoSaved"
     />
     <DocumentUploadModal
-      v-if="isAuthenticated"
+      v-if="isOwner"
       :show="showDocumentModal"
       :projectId="projectId"
+      :project="project"
       @close="showDocumentModal = false"
       @saved="handleDocumentSaved"
     />
     <EditProjectModal
-      v-if="isAuthenticated && showEditModal"
+      v-if="isOwner && showEditModal"
       :show="showEditModal"
       :project="project"
       @close="showEditModal = false"
@@ -136,6 +141,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { supabase } from '../lib/supabase'
 import { useAuthStore } from '../store/authStore'
+import { useDataStore } from '../store/dataStore'
 import LogItem from '../components/LogItem.vue'
 import LogTextModal from '../components/LogTextModal.vue'
 import ImageUploadModal from '../components/ImageUploadModal.vue'
@@ -154,9 +160,21 @@ const images = ref([])
 const videos = ref([])
 const documents = ref([])
 
-// Auth
+// Stores
 const authStore = useAuthStore()
-const isAuthenticated = computed(() => !!authStore.user)
+const dataStore = useDataStore()
+
+// Auth
+const isAuthenticated = computed(() => authStore.isAuthenticated)
+const isOwner = computed(() => {
+  console.log('Auth check:', {
+    isAuthenticated: authStore.isAuthenticated,
+    userId: authStore.userId,
+    projectUserId: project.value?.user_id,
+    project: project.value
+  })
+  return authStore.isAuthenticated && project.value && project.value.user_id === authStore.userId
+})
 
 // Modal state
 const showLogTextModal = ref(false)
@@ -165,6 +183,100 @@ const showVideoModal = ref(false)
 const showDocumentModal = ref(false)
 const editingLog = ref(null)
 const showEditModal = ref(false)
+
+// Handlers
+async function handleLogSaved() {
+  await refreshAllContent()
+  showLogTextModal.value = false
+}
+
+async function handleImageSaved() {
+  await refreshAllContent()
+  showImageModal.value = false
+}
+
+async function handleVideoSaved() {
+  await refreshAllContent()
+  showVideoModal.value = false
+}
+
+async function handleDocumentSaved() {
+  await refreshAllContent()
+  showDocumentModal.value = false
+}
+
+async function handleProjectUpdated() {
+  await refreshProject()
+  showEditModal.value = false
+}
+
+// Refresh functions
+async function refreshProject() {
+  const { data: projectData, error: fetchError } = await supabase
+    .from('projects')
+    .select('*')
+    .eq('id', projectId.value)
+    .single()
+  if (projectData) {
+    project.value = projectData
+  }
+}
+
+async function refreshAllContent() {
+  const [logsData, imagesData, videosData, documentsData] = await Promise.all([
+    supabase.from('logs').select('*').eq('project_id', projectId.value).order('created_at', { ascending: false }),
+    supabase.from('images').select('*').eq('project_id', projectId.value).order('created_at', { ascending: false }),
+    supabase.from('videos').select('*').eq('project_id', projectId.value).order('created_at', { ascending: false }),
+    supabase.from('documents').select('*').eq('project_id', projectId.value).order('created_at', { ascending: false }),
+  ])
+
+  // Update individual arrays
+  allLogs.value = [
+    ...(logsData.data || []).map(log => ({
+      ...log,
+      type: 'text'
+    })),
+    ...(imagesData.data || []).map(img => ({
+      ...img,
+      type: 'image',
+      content: img.image_url,
+      description: img.image_description
+    })),
+    ...(videosData.data || []).map(vid => ({
+      ...vid,
+      type: 'video',
+      content: vid.video_url,
+      description: vid.video_description
+    })),
+    ...(documentsData.data || []).map(doc => ({
+      ...doc,
+      type: 'document',
+      content: doc.document_url,
+      name: doc.document_name,
+      description: doc.document_description
+    }))
+  ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+
+  images.value = imagesData.data || []
+  videos.value = videosData.data || []
+  documents.value = documentsData.data || []
+}
+
+async function refreshLogs() {
+  await refreshAllContent()
+}
+
+async function refreshImages() {
+  await refreshAllContent()
+}
+
+async function refreshVideos() {
+  await refreshAllContent()
+}
+
+async function refreshDocuments() {
+  await refreshAllContent()
+}
 
 onMounted(async () => {
   isLoading.value = true
@@ -184,60 +296,8 @@ onMounted(async () => {
     return
   }
 
-  // Fetch all logs/media
-  const [logsData, imagesData, videosData, documentsData] = await Promise.all([
-    supabase.from('logs').select('*').eq('project_id', projectId.value).order('created_at', { ascending: false }),
-    supabase.from('images').select('*').eq('project_id', projectId.value).order('created_at', { ascending: false }),
-    supabase.from('videos').select('*').eq('project_id', projectId.value).order('created_at', { ascending: false }),
-    supabase.from('documents').select('*').eq('project_id', projectId.value).order('created_at', { ascending: false }),
-  ])
-
-  // Combine all content into allLogs
-  allLogs.value = [
-    ...(logsData.data || []).map(log => ({
-      ...log,
-      type: 'text'
-    })),
-    ...(imagesData.data || []).map(image => ({
-      id: image.id,
-      project_id: image.project_id,
-      user_id: image.user_id,
-      title: image.title || 'Image',
-      content: image.image_url || image.url,
-      description: image.image_description || image.description || '',
-      created_at: image.created_at,
-      updated_at: image.updated_at,
-      type: 'image'
-    })),
-    ...(videosData.data || []).map(video => ({
-      id: video.id,
-      project_id: video.project_id,
-      user_id: video.user_id,
-      title: video.title || 'Video',
-      content: video.video_url || video.url,
-      description: video.video_description || video.description || '',
-      created_at: video.created_at,
-      updated_at: video.updated_at,
-      type: 'video'
-    })),
-    ...(documentsData.data || []).map(doc => ({
-      id: doc.id,
-      project_id: doc.project_id,
-      user_id: doc.user_id,
-      title: doc.title || doc.document_name || 'Document',
-      content: doc.document_url || doc.url,
-      description: doc.document_description || doc.description || '',
-      created_at: doc.created_at,
-      updated_at: doc.updated_at,
-      type: 'document',
-      name: doc.document_name || doc.title || 'Document'
-    }))
-  ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-
-  images.value = imagesData.data || []
-  videos.value = videosData.data || []
-  documents.value = documentsData.data || []
-
+  // Fetch all content
+  await refreshAllContent()
   isLoading.value = false
 })
 
@@ -251,41 +311,21 @@ const showEditLogModal = (log) => {
   showLogTextModal.value = true
 }
 
-const handleLogSaved = async () => {
-  await dataStore.fetchLogs(projectId.value)
-  showLogTextModal.value = false
-}
-
-const handleImageSaved = async () => {
-  images.value = await dataStore.fetchImages(projectId.value)
-  showImageModal.value = false
-}
-
-const handleVideoSaved = async () => {
-  videos.value = await dataStore.fetchVideos(projectId.value)
-  showVideoModal.value = false
-}
-
-const handleDocumentSaved = async () => {
-  documents.value = await dataStore.fetchDocuments(projectId.value)
-  showDocumentModal.value = false
-}
-
 const confirmDeleteLog = async (log) => {
-  if (confirm('Are you sure you want to delete this entry?')) {
+  if (confirm('Are you sure you want to delete this log entry?')) {
     try {
-      if (log.type === 'text') {
-        await dataStore.deleteLog(log.id)
-        await dataStore.fetchLogs(projectId.value)
-      } else if (log.type === 'image') {
-        await dataStore.deleteImage(log.id)
-        images.value = await dataStore.fetchImages(projectId.value)
-      } else if (log.type === 'video') {
-        await dataStore.deleteVideo(log.id)
-        videos.value = await dataStore.fetchVideos(projectId.value)
-      }
+      const { error } = await supabase
+        .from('logs')
+        .delete()
+        .eq('id', log.id)
+      
+      if (error) throw error
+      
+      // Remove from allLogs
+      allLogs.value = allLogs.value.filter(l => l.id !== log.id)
     } catch (error) {
-      console.error('Error deleting entry:', error)
+      console.error('Error deleting log:', error)
+      alert('Failed to delete log entry')
     }
   }
 }
@@ -294,13 +334,22 @@ const showEditImageModal = (img) => {
   // Implement if you want to support editing images
 }
 
-const confirmDeleteImage = async (img) => {
+const confirmDeleteImage = async (image) => {
   if (confirm('Are you sure you want to delete this image?')) {
     try {
-      await dataStore.deleteImage(img.id)
-      images.value = await dataStore.fetchImages(projectId.value)
+      const { error } = await supabase
+        .from('images')
+        .delete()
+        .eq('id', image.id)
+      
+      if (error) throw error
+      
+      // Remove from images and allLogs
+      images.value = images.value.filter(img => img.id !== image.id)
+      allLogs.value = allLogs.value.filter(log => log.id !== image.id)
     } catch (error) {
       console.error('Error deleting image:', error)
+      alert('Failed to delete image')
     }
   }
 }
@@ -309,32 +358,44 @@ const showEditVideoModal = (vid) => {
   // Implement if you want to support editing videos
 }
 
-const confirmDeleteVideo = async (vid) => {
+const confirmDeleteVideo = async (video) => {
   if (confirm('Are you sure you want to delete this video?')) {
     try {
-      await dataStore.deleteVideo(vid.id)
-      videos.value = await dataStore.fetchVideos(projectId.value)
+      const { error } = await supabase
+        .from('videos')
+        .delete()
+        .eq('id', video.id)
+      
+      if (error) throw error
+      
+      // Remove from videos and allLogs
+      videos.value = videos.value.filter(vid => vid.id !== video.id)
+      allLogs.value = allLogs.value.filter(log => log.id !== video.id)
     } catch (error) {
       console.error('Error deleting video:', error)
+      alert('Failed to delete video')
     }
   }
 }
 
-const confirmDeleteDocument = async (doc) => {
+const confirmDeleteDocument = async (document) => {
   if (confirm('Are you sure you want to delete this document?')) {
     try {
-      await dataStore.deleteDocument(doc.id)
-      documents.value = await dataStore.fetchDocuments(projectId.value)
+      const { error } = await supabase
+        .from('documents')
+        .delete()
+        .eq('id', document.id)
+      
+      if (error) throw error
+      
+      // Remove from documents and allLogs
+      documents.value = documents.value.filter(doc => doc.id !== document.id)
+      allLogs.value = allLogs.value.filter(log => log.id !== document.id)
     } catch (error) {
       console.error('Error deleting document:', error)
+      alert('Failed to delete document')
     }
   }
-}
-
-// Add project update handler
-const handleProjectUpdated = async () => {
-  await dataStore.fetchProjects() // Refresh projects list
-  showEditModal.value = false
 }
 </script>
 

@@ -5,6 +5,7 @@ import router from "./router";
 import { createPinia } from "pinia";
 import piniaPluginPersistedstate from "pinia-plugin-persistedstate";
 import { useDataStore } from "./store/dataStore";
+import { useAuthStore } from "./store/authStore";
 
 const app = createApp(App);
 const pinia = createPinia();
@@ -13,8 +14,13 @@ pinia.use(piniaPluginPersistedstate);
 app.use(pinia);
 app.use(router);
 
-// Initialize store before mounting
+// Initialize stores before mounting
 const dataStore = useDataStore();
-dataStore.initialize().then(() => {
+const authStore = useAuthStore();
+
+Promise.all([
+  dataStore.initialize(),
+  authStore.initialize()
+]).then(() => {
   app.mount("#app");
 });
