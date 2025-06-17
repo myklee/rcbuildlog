@@ -547,6 +547,26 @@ export const useDataStore = defineStore('dataStore', () => {
     }
   }
 
+  async function deleteProject(projectId) {
+    if (!loggedInUser.value) return;
+    try {
+      console.log('Deleting project:', projectId);
+      const { error } = await supabase
+        .from('projects')
+        .delete()
+        .eq('id', projectId)
+        .eq('user_id', loggedInUser.value.id);
+        
+      if (error) throw error;
+      
+      // Remove from local state
+      projects.value = projects.value.filter(p => p.id !== projectId);
+    } catch (e) {
+      console.error('Error deleting project:', e);
+      throw e;
+    }
+  }
+
   return {
     // State
     loggedInUser,
@@ -586,7 +606,8 @@ export const useDataStore = defineStore('dataStore', () => {
     saveDraft,
     clearDraft,
     updateProject,
-    addProject
+    addProject,
+    deleteProject
   }
 }, {
   persist: {
