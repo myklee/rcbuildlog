@@ -72,13 +72,6 @@
               </router-link>
               <span v-if="project.is_private" class="private-label">Private</span>
             </div>
-            <button
-              @click="confirmDelete(project)"
-              class="delete-button"
-              title="Delete"
-            >
-              🗑
-            </button>
           </div>
           <p class="project-description">{{ project.description }}</p>
           <p class="project-date">
@@ -93,30 +86,6 @@
         @close="showCreateModal = false"
         @saved="handleProjectCreated"
       />
-
-      <!-- Delete Confirmation Modal -->
-      <div v-if="showDeleteModal" class="modal-overlay">
-        <div class="modal-content">
-          <h3 class="modal-title">Delete Project</h3>
-          <p class="modal-message">Are you sure you want to delete "{{ projectToDelete?.name }}"? This action cannot be undone.</p>
-          <div class="modal-actions">
-            <button
-              @click="showDeleteModal = false"
-              class="cancel-button"
-              :disabled="isDeleting"
-            >
-              Cancel
-            </button>
-            <button
-              @click="deleteProject"
-              class="delete-confirm-button"
-              :disabled="isDeleting"
-            >
-              {{ isDeleting ? 'Deleting...' : 'Delete' }}
-            </button>
-          </div>
-        </div>
-      </div>
     </template>
   </div>
 </template>
@@ -164,9 +133,6 @@ const displayedProjects = computed(() => {
 
 // Modal state
 const showCreateModal = ref(false)
-const showDeleteModal = ref(false)
-const projectToDelete = ref(null)
-const isDeleting = ref(false)
 
 const newProject = ref({
   name: '',
@@ -194,27 +160,6 @@ const toggleSortOrder = async () => {
 const handleProjectCreated = async () => {
   await dataStore.fetchProjects()
   showCreateModal.value = false
-}
-
-const confirmDelete = (project) => {
-  projectToDelete.value = project
-  showDeleteModal.value = true
-}
-
-const deleteProject = async () => {
-  if (!projectToDelete.value) return
-  
-  try {
-    isDeleting.value = true
-    await dataStore.deleteProject(projectToDelete.value.id)
-    showDeleteModal.value = false
-    projectToDelete.value = null
-  } catch (error) {
-    console.error('Error deleting project:', error)
-    alert('Failed to delete project: ' + error.message)
-  } finally {
-    isDeleting.value = false
-  }
 }
 
 const formatDate = (date) => {
@@ -423,17 +368,6 @@ watch(() => filters.value, async () => {
   color: #2563eb;
 }
 
-.delete-button {
-  color: #6b7280;
-  background: none;
-  border: none;
-  cursor: pointer;
-}
-
-.delete-button:hover {
-  color: #dc2626;
-}
-
 .project-description {
   color: #4b5563;
   margin: 0.5rem 0;
@@ -448,84 +382,9 @@ watch(() => filters.value, async () => {
   color: #9ca3af;
 }
 
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
-}
-
-.modal-content {
-  background: white;
-  padding: 2rem;
-  border-radius: 8px;
-  width: 90%;
-  max-width: 500px;
-}
-
-.modal-title {
-  margin: 0 0 1rem;
-  color: #1f2937;
-  font-size: 1.5rem;
-}
-
-.modal-message {
-  margin: 0 0 1.5rem;
-  color: #4b5563;
-}
-
-.modal-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 1rem;
-}
-
-.cancel-button {
-  padding: 0.5rem 1rem;
-  background: #f3f4f6;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  color: #374151;
-}
-
-.cancel-button:hover:not(:disabled) {
-  background: #e5e7eb;
-}
-
-.delete-confirm-button {
-  padding: 0.5rem 1rem;
-  background: #ef4444;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.delete-confirm-button:hover:not(:disabled) {
-  background: #dc2626;
-}
-
-.delete-confirm-button:disabled,
-.cancel-button:disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
-}
-
 @media (max-width: 768px) {
   .container {
     padding: 0.5rem;
-  }
-
-  .modal-content {
-    width: 95%;
-    padding: 1rem;
   }
 }
 

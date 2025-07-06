@@ -29,7 +29,18 @@
           <button class="add-button" @click="showVideoModal = true">Add Video</button>
           <button class="add-button" @click="showDocumentModal = true">Add Document</button>
         </div>
-        <button v-if="isAuthenticated" class="edit-btn" @click="showEditModal = true">Edit Project</button>
+        <div class="project-actions">
+          <button v-if="isAuthenticated" class="edit-btn" @click="showEditModal = true">Edit Project</button>
+          <button v-if="isOwner" class="build-spec-btn" @click="showBuildSpecModal = true">
+            <Icon name="document" />
+            Build Specs
+          </button>
+          <button v-if="isOwner" class="llm-parse-btn" @click="showLLMParserModal = true">
+            <Icon name="brain" />
+            AI Parser
+          </button>
+          <button v-if="isOwner" class="delete-btn" @click="confirmDeleteProject">Delete Project</button>
+        </div>
       </div>
     </div>
 
@@ -114,12 +125,55 @@
       @saved="handleDocumentSaved" />
     <EditProjectModal v-if="isOwner && showEditModal" :show="showEditModal" :project="project"
       @close="showEditModal = false" @saved="handleProjectUpdated" />
+    <BuildSpecSheet v-if="isOwner && showBuildSpecModal" :show="showBuildSpecModal" :project="project"
+      @close="showBuildSpecModal = false" ref="buildSpecRef" />
+    <LLMParserModal v-if="isOwner" :show="showLLMParserModal" :projectId="projectId"
+      @close="showLLMParserModal = false" @specs-updated="handleBuildSpecSaved" />
+
+    <!-- Delete Confirmation Modal -->
+    <div v-if="showDeleteModal" class="modal-overlay">
+      <div class="modal-content">
+        <h3 class="modal-title">Delete Project</h3>
+        <p class="modal-message">Are you sure you want to delete "{{ project?.name }}"? This action cannot be undone.</p>
+        <div class="modal-actions">
+          <button
+            @click="showDeleteModal = false"
+            class="cancel-button"
+            :disabled="isDeleting"
+          >
+            Cancel
+          </button>
+          <button
+            @click="deleteProject"
+            class="delete-confirm-button"
+            :disabled="isDeleting"
+          >
+            {{ isDeleting ? 'Deleting...' : 'Delete' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Build Spec Sheet Modal -->
+    <div v-if="showBuildSpecModal" class="modal-overlay" @click="handleModalOverlayClick">
+      <div class="modal-content build-spec-modal" @click.stop>
+        <div class="modal-header">
+          <h3>Build Specification Sheet</h3>
+          <button @click="showBuildSpecModal = false" class="close-btn">
+            <Icon name="close" />
+          </button>
+        </div>
+        <div class="modal-body">
+          <BuildSpecSheet :projectId="projectId" @saved="handleBuildSpecSaved" ref="buildSpecRef" />
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { supabase } from '../lib/supabase'
 import { useAuthStore } from '../store/authStore'
 import { useDataStore } from '../store/dataStore'
@@ -129,8 +183,12 @@ import ImageUploadModal from '../components/ImageUploadModal.vue'
 import VideoUploadModal from '../components/VideoUploadModal.vue'
 import DocumentUploadModal from '../components/DocumentUploadModal.vue'
 import EditProjectModal from '../components/EditProjectModal.vue'
+import BuildSpecSheet from '../components/BuildSpecSheet.vue'
+import LLMParserModal from '../components/LLMParserModal.vue'
+import Icon from '../components/Icon.vue'
 
 const route = useRoute()
+const router = useRouter()
 const projectId = computed(() => route.params.id)
 const project = ref(null)
 const isLoading = ref(true)
@@ -167,6 +225,11 @@ const editingImage = ref(null)
 const editingVideo = ref(null)
 const editingDocument = ref(null)
 const showEditModal = ref(false)
+const showDeleteModal = ref(false)
+const isDeleting = ref(false)
+const showBuildSpecModal = ref(false)
+const showLLMParserModal = ref(false)
+const buildSpecRef = ref(null)
 
 // Handlers
 async function handleLogSaved() {
@@ -192,6 +255,10 @@ async function handleDocumentSaved() {
 async function handleProjectUpdated() {
   await refreshProject()
   showEditModal.value = false
+}
+
+async function handleBuildSpecSaved() {
+  showBuildSpecModal.value = false
 }
 
 // Refresh functions
@@ -388,6 +455,37 @@ const confirmDeleteDocument = async (document) => {
     }
   }
 }
+
+const confirmDeleteProject = async () => {
+  showDeleteModal.value = true
+}
+
+const deleteProject = async () => {
+  isDeleting.value = true
+  try {
+    const { error } = await supabase
+      .from('projects')
+      .delete()
+      .eq('id', projectId.value)
+
+    if (error) throw error
+
+    // Redirect to user home page after successful deletion
+    router.push('/user')
+  } catch (error) {
+    console.error('Error deleting project:', error)
+    alert('Failed to delete project')
+  } finally {
+    isDeleting.value = false
+  }
+}
+
+const handleModalOverlayClick = () => {
+  // Only close if not in edit mode
+  if (buildSpecRef.value && !buildSpecRef.value.isEditing) {
+    showBuildSpecModal.value = false
+  }
+}
 </script>
 
 <style scoped>
@@ -424,33 +522,64 @@ const confirmDeleteDocument = async (document) => {
   justify-content: flex-end;
 }
 
+.project-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
 .add-button {
-  background: #3b82f6;
-  color: white;
-  padding: 0.5rem 1rem;
-  border-radius: 0.375rem;
-  font-weight: 500;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 0.25rem;
   transition: background-color 0.2s;
-  font-size: 0.875rem;
-  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #6b7280;
 }
 
 .add-button:hover {
-  background: #2563eb;
+  background-color: #f3f4f6;
+  color: #374151;
 }
 
 .edit-btn {
-  background: #4b5563;
-  color: white;
-  padding: 0.5rem 1rem;
-  border-radius: 0.375rem;
-  font-weight: 500;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 0.25rem;
   transition: background-color 0.2s;
-  font-size: 0.875rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #6b7280;
 }
 
 .edit-btn:hover {
-  background: #374151;
+  background-color: #f3f4f6;
+  color: #374151;
+}
+
+.delete-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 0.25rem;
+  transition: background-color 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #6b7280;
+}
+
+.delete-btn:hover {
+  background-color: #fef2f2;
+  color: #dc2626;
 }
 
 .content-wrapper {
@@ -567,14 +696,6 @@ const confirmDeleteDocument = async (document) => {
   border-top: 1px solid #e5e7eb;
 }
 
-.delete-btn {
-  background: #ef4444;
-  color: white;
-  padding: 0.25rem 0.75rem;
-  border-radius: 0.25rem;
-  font-size: 0.875rem;
-}
-
 .doc-link {
   display: flex;
   align-items: center;
@@ -596,5 +717,160 @@ const confirmDeleteDocument = async (document) => {
   display: flex;
   flex-direction: column;
   gap: 1rem;
+}
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.modal-content {
+  background-color: white;
+  padding: 2rem;
+  border-radius: 0.5rem;
+  width: 300px;
+  max-width: 90%;
+  text-align: center;
+}
+
+.modal-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+
+.modal-message {
+  margin-bottom: 2rem;
+  font-size: 1.1rem;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.cancel-button {
+  background: #4b5563;
+  color: white;
+  padding: 0.75rem 1rem;
+  border-radius: 0.375rem;
+  font-weight: 500;
+  transition: background-color 0.2s;
+  font-size: 0.875rem;
+}
+
+.cancel-button:hover {
+  background: #374151;
+}
+
+.delete-confirm-button {
+  background: #ef4444;
+  color: white;
+  padding: 0.75rem 1rem;
+  border-radius: 0.375rem;
+  font-weight: 500;
+  transition: background-color 0.2s;
+  font-size: 0.875rem;
+}
+
+.delete-confirm-button:hover {
+  background: #d32f2f;
+}
+
+/* Build Spec Modal Styles */
+.build-spec-modal {
+  width: 90vw;
+  max-width: 1200px;
+  height: 90vh;
+  max-height: 800px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem 2rem;
+  border-bottom: 1px solid #e5e7eb;
+  background: #f9fafb;
+  border-radius: 0.5rem 0.5rem 0 0;
+}
+
+.modal-header h3 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin: 0;
+  color: #1f2937;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  color: #6b7280;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 0.375rem;
+  transition: all 0.2s;
+}
+
+.close-btn:hover {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.modal-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0;
+}
+
+/* Build Spec Button */
+.build-spec-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: none;
+  border: none;
+  color: #3b82f6;
+  cursor: pointer;
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.build-spec-btn:hover {
+  background: #eff6ff;
+}
+
+/* LLM Parser Button */
+.llm-parse-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: none;
+  border: none;
+  color: #8b5cf6;
+  cursor: pointer;
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.llm-parse-btn:hover {
+  background: #f3f4f6;
 }
 </style>
