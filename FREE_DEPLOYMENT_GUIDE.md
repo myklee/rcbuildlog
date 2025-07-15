@@ -6,45 +6,13 @@ This guide shows you how to deploy your RC Build Log app to GitHub Pages using *
 
 | Provider | Free Tier | Setup Difficulty | Quality | Best For |
 |----------|-----------|------------------|---------|----------|
-| **Hugging Face** | 30K requests/month | Easy | Good | Most users |
 | **OpenRouter** | Multiple models | Easy | Excellent | Best quality |
 | **Replicate** | Limited usage | Medium | Good | Alternative |
 | **Fallback Parser** | Unlimited | None | Basic | No setup needed |
 
 ## 🚀 **Quick Start - Choose Your Option**
 
-### **Option 1: Hugging Face (Recommended)**
-
-**Why choose this?** Easiest setup, generous free tier, good quality.
-
-#### Setup Steps:
-1. **Create Hugging Face Account**
-   - Visit [huggingface.co](https://huggingface.co/)
-   - Click "Sign Up" and create account
-
-2. **Get API Token**
-   - Go to Settings → Access Tokens
-   - Click "New token"
-   - Name it "RC Build Log"
-   - Select "Read" permissions
-   - Copy the token
-
-3. **Configure Your App**
-   ```bash
-   # Create .env file in project root
-   echo "VITE_HUGGINGFACE_API_KEY=your_token_here" > .env
-   ```
-
-4. **Deploy to GitHub Pages**
-   ```bash
-   npm run build
-   # Copy dist/ contents to docs/ folder
-   git add .
-   git commit -m "Add free Hugging Face LLM support"
-   git push origin main
-   ```
-
-### **Option 2: OpenRouter (Best Quality)**
+### **Option 1: OpenRouter (Best Quality)**
 
 **Why choose this?** Access to multiple high-quality models, generous free tier.
 
@@ -73,7 +41,7 @@ This guide shows you how to deploy your RC Build Log app to GitHub Pages using *
    }
    ```
 
-### **Option 3: Fallback Parser (No Setup)**
+### **Option 2: Fallback Parser (No Setup)**
 
 **Why choose this?** Works immediately, no API keys, completely free.
 
@@ -96,38 +64,6 @@ This guide shows you how to deploy your RC Build Log app to GitHub Pages using *
    ```
 
 ## 🔧 **Detailed Setup Instructions**
-
-### **Hugging Face Setup**
-
-1. **Account Creation**
-   ```bash
-   # Visit https://huggingface.co/join
-   # Fill in your details and verify email
-   ```
-
-2. **Token Generation**
-   - Go to [Settings → Access Tokens](https://huggingface.co/settings/tokens)
-   - Click "New token"
-   - Name: `RC Build Log`
-   - Role: `Read`
-   - Copy the generated token
-
-3. **Environment Setup**
-   ```bash
-   # Create .env file
-   cat > .env << EOF
-   VITE_HUGGINGFACE_API_KEY=hf_your_token_here
-   EOF
-   ```
-
-4. **Test Configuration**
-   ```bash
-   # Start development server
-   npm run dev
-   
-   # Open browser and test AI Parser
-   # Should show "LLM connection successful!"
-   ```
 
 ### **OpenRouter Setup**
 
@@ -225,7 +161,7 @@ git push origin main
 
 ### **Step 4: Add Environment Variables (Optional)**
 
-For Hugging Face and OpenRouter, you can add environment variables to GitHub:
+For OpenRouter and Replicate, you can add environment variables to GitHub:
 
 1. Go to repository → Settings → Secrets and variables → Actions
 2. Click "New repository secret"
@@ -288,24 +224,24 @@ console.log('Provider:', LLM_CONFIG.provider)
 
 ## 📊 **Performance Comparison**
 
-| Feature | Hugging Face | OpenRouter | Fallback Parser |
-|---------|--------------|------------|-----------------|
+| Feature | OpenRouter | Replicate | Fallback Parser |
+|---------|------------|-----------|-----------------|
 | **Setup Time** | 5 minutes | 5 minutes | 1 minute |
 | **API Calls** | Required | Required | None |
-| **Quality** | Good | Excellent | Basic |
+| **Quality** | Excellent | Good | Basic |
 | **Speed** | Fast | Fast | Instant |
-| **Cost** | Free (30K/month) | Free tier | Completely free |
+| **Cost** | Free tier | Free tier | Completely free |
 | **Offline** | No | No | Yes |
 
 ## 🎯 **Recommendations**
 
 ### **For Beginners**
 - Start with **Fallback Parser** (no setup)
-- Upgrade to **Hugging Face** when ready
+- Upgrade to **OpenRouter** when ready
 
 ### **For Best Quality**
 - Use **OpenRouter** with GPT-3.5-turbo
-- Fallback to Hugging Face if needed
+- Fallback to Replicate if needed
 
 ### **For Development**
 - Use **Fallback Parser** for testing

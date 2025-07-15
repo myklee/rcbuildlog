@@ -26,7 +26,7 @@ npm install          # Install dependencies
 - **Backend**: Supabase (PostgreSQL, Auth, Storage)
 - **Styling**: Tailwind CSS (via main.css)
 - **Router**: Vue Router with auth guards
-- **AI Integration**: Multiple LLM providers (Ollama, HuggingFace, OpenRouter, Replicate)
+- **AI Integration**: Multiple LLM providers (Ollama, OpenRouter, Replicate)
 
 ### Key Architecture Patterns
 
@@ -46,7 +46,7 @@ npm install          # Install dependencies
 
 **Multi-Provider LLM Support**: The application includes an advanced LLM integration system in src/services/llmParser.js:1 that supports:
 - Local providers: Ollama, LocalAI
-- Cloud providers: HuggingFace, OpenRouter, Replicate
+- Cloud providers: OpenRouter, Replicate
 - Configuration managed in src/config/llm.js:1
 
 **RC Spec Extraction**: Specialized prompt engineering for extracting RC vehicle specifications from text, with structured JSON output covering vehicle info, motor/engine, drivetrain, suspension, electronics, body/chassis, performance, and modifications.
@@ -65,7 +65,7 @@ The application follows a user-centric data model where all entities (projects, 
 
 **Vite Configuration**: Custom base path for GitHub Pages deployment (vite.config.js:7) and development server on port 3333.
 
-**Environment Variables**: Supports multiple API keys for different LLM providers (VITE_HUGGINGFACE_API_KEY, VITE_OPENROUTER_API_KEY, etc.) alongside standard Supabase configuration.
+**Environment Variables**: Supports multiple API keys for different LLM providers (VITE_OPENROUTER_API_KEY, VITE_REPLICATE_API_KEY, etc.) alongside standard Supabase configuration.
 
 **Persistence**: State persistence configured for key store paths with localStorage, including restore hooks for data fetching.
 

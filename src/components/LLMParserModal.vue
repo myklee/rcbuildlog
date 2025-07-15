@@ -26,9 +26,6 @@
               <p v-if="llmConfig.provider === 'openrouter'">
                 <strong>Model:</strong> {{ llmConfig.openrouter?.model }}
               </p>
-              <p v-if="llmConfig.provider === 'huggingface'">
-                <strong>Model:</strong> {{ llmConfig.huggingface?.model }}
-              </p>
               <p v-if="llmConfig.provider === 'replicate'">
                 <strong>Model:</strong> {{ llmConfig.replicate?.model }}
               </p>
@@ -180,19 +177,7 @@
         </div>
         <div class="modal-body">
           <div class="setup-section">
-            <h4>Option 1: Hugging Face (FREE - 30K requests/month)</h4>
-            <ol>
-              <li>Create account at <a href="https://huggingface.co/" target="_blank">Hugging Face</a></li>
-              <li>Go to Settings → Access Tokens</li>
-              <li>Create a new token</li>
-              <li>Create a <code>.env</code> file in your project root</li>
-              <li>Add: <code>VITE_HUGGINGFACE_API_KEY=your_token_here</code></li>
-              <li>Deploy to GitHub Pages</li>
-            </ol>
-          </div>
-
-          <div class="setup-section">
-            <h4>Option 2: OpenRouter (FREE - Multiple models)</h4>
+            <h4>Option 1: OpenRouter (FREE - Multiple models)</h4>
             <ol>
               <li>Create account at <a href="https://openrouter.ai/" target="_blank">OpenRouter</a></li>
               <li>Get API key from <a href="https://openrouter.ai/keys" target="_blank">OpenRouter Keys</a></li>
@@ -203,7 +188,7 @@
           </div>
 
           <div class="setup-section">
-            <h4>Option 3: Replicate (FREE - Limited usage)</h4>
+            <h4>Option 2: Replicate (FREE - Limited usage)</h4>
             <ol>
               <li>Create account at <a href="https://replicate.com/" target="_blank">Replicate</a></li>
               <li>Get API token from <a href="https://replicate.com/account/api-tokens" target="_blank">Replicate API Tokens</a></li>
@@ -214,7 +199,7 @@
           </div>
 
           <div class="setup-section">
-            <h4>Option 4: Fallback Parser (Completely FREE)</h4>
+            <h4>Option 3: Fallback Parser (Completely FREE)</h4>
             <ol>
               <li>No setup required!</li>
               <li>Uses keyword matching and regex patterns</li>
@@ -225,7 +210,7 @@
           </div>
 
           <div class="setup-section">
-            <h4>Option 5: Ollama (Local Development Only)</h4>
+            <h4>Option 4: Ollama (Local Development Only)</h4>
             <ol>
               <li>Visit <a href="https://ollama.ai/" target="_blank">ollama.ai</a> and download for your platform</li>
               <li>Install and start Ollama</li>

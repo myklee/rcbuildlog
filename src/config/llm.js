@@ -11,13 +11,6 @@ export const LLM_CONFIG = {
 
 // Available models for different providers
 export const AVAILABLE_MODELS = {
-  huggingface: [
-    'microsoft/DialoGPT-medium',
-    'gpt2',
-    'distilgpt2',
-    'microsoft/DialoGPT-small',
-    'EleutherAI/gpt-neo-125M'
-  ],
   openrouter: [
     'openai/gpt-3.5-turbo',
     'anthropic/claude-3-haiku',
@@ -45,15 +38,6 @@ export const AVAILABLE_MODELS = {
 
 // Instructions for setting up different providers
 export const SETUP_INSTRUCTIONS = {
-  huggingface: `
-    Hugging Face Setup (FREE - 30K requests/month):
-    1. Create account at https://huggingface.co/
-    2. Go to Settings → Access Tokens
-    3. Create a new token
-    4. Create a .env file in your project root
-    5. Add: VITE_HUGGINGFACE_API_KEY=your_token_here
-    6. Deploy to GitHub Pages
-  `,
   openrouter: `
     OpenRouter Setup (FREE - Multiple models):
     1. Create account at https://openrouter.ai/
