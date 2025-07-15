@@ -8,7 +8,6 @@
           <textarea
             id="notes"
             v-model="newLogNotes"
-            required
             rows="4"
             placeholder="Enter your notes here..."
           ></textarea>
@@ -166,10 +165,6 @@ const removeTag = (index) => {
 }
 
 const saveLogEntry = async () => {
-  if (!newLogNotes.value) {
-    alert("Please fill in all required fields")
-    return
-  }
 
   try {
     const logData = {

@@ -15,13 +15,25 @@
             <div class="config-info">
               <p><strong>Provider:</strong> {{ llmConfig.provider }}</p>
               <p v-if="llmConfig.provider === 'ollama'">
-                <strong>Model:</strong> {{ llmConfig.ollama.model }}
+                <strong>Model:</strong> {{ llmConfig.ollama?.model }}
               </p>
               <p v-if="llmConfig.provider === 'localai'">
-                <strong>Model:</strong> {{ llmConfig.localai.model }}
+                <strong>Model:</strong> {{ llmConfig.localai?.model }}
               </p>
               <p v-if="llmConfig.provider === 'openai'">
-                <strong>Model:</strong> {{ llmConfig.openai.model }}
+                <strong>Model:</strong> {{ llmConfig.openai?.model }}
+              </p>
+              <p v-if="llmConfig.provider === 'openrouter'">
+                <strong>Model:</strong> {{ llmConfig.openrouter?.model }}
+              </p>
+              <p v-if="llmConfig.provider === 'huggingface'">
+                <strong>Model:</strong> {{ llmConfig.huggingface?.model }}
+              </p>
+              <p v-if="llmConfig.provider === 'replicate'">
+                <strong>Model:</strong> {{ llmConfig.replicate?.model }}
+              </p>
+              <p v-if="llmConfig.provider === 'fallback'">
+                <strong>Model:</strong> Keyword/Regex Parser (No API required)
               </p>
             </div>
           </div>
@@ -168,33 +180,59 @@
         </div>
         <div class="modal-body">
           <div class="setup-section">
-            <h4>Option 1: Ollama (Recommended - Local)</h4>
+            <h4>Option 1: Hugging Face (FREE - 30K requests/month)</h4>
+            <ol>
+              <li>Create account at <a href="https://huggingface.co/" target="_blank">Hugging Face</a></li>
+              <li>Go to Settings → Access Tokens</li>
+              <li>Create a new token</li>
+              <li>Create a <code>.env</code> file in your project root</li>
+              <li>Add: <code>VITE_HUGGINGFACE_API_KEY=your_token_here</code></li>
+              <li>Deploy to GitHub Pages</li>
+            </ol>
+          </div>
+
+          <div class="setup-section">
+            <h4>Option 2: OpenRouter (FREE - Multiple models)</h4>
+            <ol>
+              <li>Create account at <a href="https://openrouter.ai/" target="_blank">OpenRouter</a></li>
+              <li>Get API key from <a href="https://openrouter.ai/keys" target="_blank">OpenRouter Keys</a></li>
+              <li>Create a <code>.env</code> file in your project root</li>
+              <li>Add: <code>VITE_OPENROUTER_API_KEY=your_key_here</code></li>
+              <li>Deploy to GitHub Pages</li>
+            </ol>
+          </div>
+
+          <div class="setup-section">
+            <h4>Option 3: Replicate (FREE - Limited usage)</h4>
+            <ol>
+              <li>Create account at <a href="https://replicate.com/" target="_blank">Replicate</a></li>
+              <li>Get API token from <a href="https://replicate.com/account/api-tokens" target="_blank">Replicate API Tokens</a></li>
+              <li>Create a <code>.env</code> file in your project root</li>
+              <li>Add: <code>VITE_REPLICATE_API_KEY=your_token_here</code></li>
+              <li>Deploy to GitHub Pages</li>
+            </ol>
+          </div>
+
+          <div class="setup-section">
+            <h4>Option 4: Fallback Parser (Completely FREE)</h4>
+            <ol>
+              <li>No setup required!</li>
+              <li>Uses keyword matching and regex patterns</li>
+              <li>Works offline without any API calls</li>
+              <li>Change provider to 'fallback' in <code>src/config/llm.js</code></li>
+              <li>Limited but functional for basic RC spec extraction</li>
+            </ol>
+          </div>
+
+          <div class="setup-section">
+            <h4>Option 5: Ollama (Local Development Only)</h4>
             <ol>
               <li>Visit <a href="https://ollama.ai/" target="_blank">ollama.ai</a> and download for your platform</li>
               <li>Install and start Ollama</li>
               <li>Open terminal/command prompt and run:</li>
               <li><code>ollama pull llama2:7b</code></li>
               <li>Start Ollama service: <code>ollama serve</code></li>
-            </ol>
-          </div>
-
-          <div class="setup-section">
-            <h4>Option 2: OpenAI (Cloud - Requires API Key)</h4>
-            <ol>
-              <li>Get an API key from <a href="https://platform.openai.com/" target="_blank">OpenAI Platform</a></li>
-              <li>Create a <code>.env</code> file in your project root</li>
-              <li>Add: <code>VITE_OPENAI_API_KEY=your_api_key_here</code></li>
-              <li>Change provider to 'openai' in <code>src/config/llm.js</code></li>
-            </ol>
-          </div>
-
-          <div class="setup-section">
-            <h4>Option 3: LocalAI</h4>
-            <ol>
-              <li>Visit <a href="https://localai.io/" target="_blank">localai.io</a> for installation</li>
-              <li>Configure your models in LocalAI</li>
-              <li>Start service on port 8080</li>
-              <li>Change provider to 'localai' in <code>src/config/llm.js</code></li>
+              <li>Change provider to 'ollama' in <code>src/config/llm.js</code></li>
             </ol>
           </div>
 
@@ -218,6 +256,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { llmParser } from '../services/llmParser'
+import { LLM_CONFIG } from '../config/llm'
 import { supabase } from '../lib/supabase'
 import Icon from './Icon.vue'
 
@@ -239,13 +278,8 @@ const images = ref([])
 const videos = ref([])
 const showSetupGuide = ref(false)
 
-// LLM Configuration
-const llmConfig = computed(() => ({
-  provider: 'ollama', // This should come from a config or settings
-  ollama: { model: 'llama2:7b' },
-  localai: { model: 'llama2' },
-  openai: { model: 'gpt-3.5-turbo' }
-}))
+// LLM Configuration - synced with actual config
+const llmConfig = computed(() => LLM_CONFIG)
 
 // Content statistics
 const contentStats = computed(() => ({
